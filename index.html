@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phishing Awareness — Interactive Module</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f6f8;--surface:#fff;--border:#e4e7ec;--text:#101828;--sub:#475467;--muted:#98a2b3;
+  --blue:#1570ef;--blue-l:#eff4ff;--blue-m:#b2ccff;--red:#d92d20;--red-l:#fef3f2;
+  --orange:#dc6803;--orange-l:#fffaeb;--green:#039855;--green-l:#ecfdf3;
+  --purple:#6941c6;--purple-l:#f4f3ff;--purple-m:#d9d6fe;--dark:#0f172a;--topbar:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+
+/* KEY FIX: Remove overflow:hidden from html/body so LMS iframe scrolls correctly */
+html{height:100%;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100%;
+  /* No overflow:hidden here */
+}
+
+.top-bar{
+  height:var(--topbar);
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 20px;gap:10px;
+  /* KEY FIX: sticky instead of fixed so it works inside iframe */
+  position:sticky;top:0;
+  z-index:200;
+}
+.logo{display:flex;align-items:center;gap:7px;font-weight:700;font-size:.88rem;}
+.logo-box{width:26px;height:26px;background:var(--blue);border-radius:5px;display:flex;align-items:center;justify-content:center;}
+.logo-box svg{width:14px;height:14px;}
+.top-sub{font-size:.72rem;color:var(--muted);}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.prog-wrap{display:flex;align-items:center;gap:8px;font-size:.76rem;color:var(--sub);}
+.prog-track{width:100px;height:3px;background:var(--border);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--blue);border-radius:99px;transition:width .5s;}
+.role-pill{font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-m);display:none;}
+.role-pill.show{display:block;}
+
+/* KEY FIX: layout is now a normal block flow, not a fixed height flex */
+.layout{padding-top:0;}
+.main{
+  margin:0 auto;
+  padding:32px 48px;
+  max-width:1000px;
+  width:100%;
+  /* KEY FIX: no overflow:auto, let the page scroll naturally */
+}
+
+/* Progress stripe: sticky, not fixed */
+.progress-stripe{
+  position:sticky;top:var(--topbar);
+  left:0;right:0;height:3px;
+  background:var(--border);
+  z-index:199;
+  margin-top:-3px; /* collapse gap */
+}
+.progress-stripe-fill{height:100%;background:var(--blue);transition:width .4s ease;width:0%;}
+
+.page-wrapper{
+  position:relative;
+  min-height:calc(100vh - var(--topbar));
+  overflow-x:hidden;
+}
+.fp-backdrop{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.25);
+  z-index:149;
+}
+.fp-backdrop.show{display:block;}
+.fp{
+  position:fixed;
+  top:0;right:0;bottom:0;
+  width:350px;
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  transform:translateX(110%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1), visibility 0s linear .3s;
+  z-index:150;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  visibility:hidden;
+}
+.fp.open{
+  transform:translateX(0);
+  visibility:visible;
+  transition:transform .3s cubic-bezier(.4,0,.2,1), visibility 0s linear 0s;
+}
+@media(max-width:900px){
+  .fp{
+    width:100%;top:auto;right:0;left:0;bottom:0;
+    height:60vh;
+    border-left:none;border-top:1px solid var(--border);
+    border-radius:14px 14px 0 0;
+    transform:translateY(110%);
+  }
+  .fp.open{transform:translateY(0);}
+}
+@media(max-width:700px){
+  .main{padding:20px 16px;}
+  .top-bar{padding:0 14px;}
+  .wh-title{font-size:1.2rem;}
+  .welcome-hero{padding:24px 20px;}
+  .how-grid{grid-template-columns:1fr;}
+  .role-grid{grid-template-columns:1fr;}
+  .prot-card{grid-template-columns:1fr;}
+  .prot-l{flex-direction:row;justify-content:flex-start;padding:16px;gap:14px;}
+  .prot-av{width:48px;height:48px;font-size:1.4rem;flex-shrink:0;}
+  .prot-facts{grid-template-columns:1fr 1fr;}
+  .masks{grid-template-columns:1fr;}
+  .tl{grid-template-columns:1fr;}
+  .rules-grid{grid-template-columns:1fr;}
+  .v-opts{flex-direction:column;}
+  .e-body{padding:12px 14px;font-size:.82rem;}
+  .e-hdr{padding:10px 14px;}
+  .e-subj{font-size:.88rem;}
+  .fq-box{padding:18px 16px;}
+  .fq-q{font-size:.9rem;}
+  .card{padding:16px;}
+  .row{flex-wrap:wrap;gap:8px;}
+  .row .btn{flex:1;justify-content:center;}
+  .prog-track{width:80px;}
+  .top-sub{display:none;}
+}
+
+.screen{display:none;}
+.screen.active{display:block;animation:up .28s ease;}
+@keyframes up{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+.eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+.tag{font-size:.65rem;font-weight:700;padding:2px 10px;border-radius:99px;text-transform:uppercase;letter-spacing:.5px;}
+.tag-orange{background:var(--orange-l);color:var(--orange);border:1px solid #fedf89;}
+.tag-red{background:var(--red-l);color:var(--red);border:1px solid #fecdca;}
+.tag-blue{background:var(--blue-l);color:var(--blue);border:1px solid var(--blue-m);}
+.tag-green{background:var(--green-l);color:var(--green);border:1px solid #a9efc5;}
+.tag-purple{background:var(--purple-l);color:var(--purple);border:1px solid var(--purple-m);}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:22px;margin-bottom:16px;}
+.body{font-size:.86rem;color:var(--sub);line-height:1.7;}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:10px 20px;border-radius:7px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .12s;}
+.btn-primary{background:var(--blue);color:#fff;}.btn-primary:hover{background:#1255c7;}
+.btn-ghost{background:var(--surface);color:var(--text);border:1px solid var(--border);}.btn-ghost:hover{background:var(--bg);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.row{display:flex;align-items:center;justify-content:space-between;margin-top:24px;}
+hr{border:none;border-top:1px solid var(--border);margin:22px 0;}
+
+/* WELCOME */
+.welcome-hero{background:linear-gradient(135deg,var(--dark) 0%,#1e293b 100%);border-radius:12px;padding:36px 40px;margin-bottom:20px;position:relative;overflow:hidden;}
+.welcome-hero::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;border-radius:50%;background:rgba(21,112,239,.12);pointer-events:none;}
+.wh-eyebrow{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#475569;margin-bottom:10px;}
+.wh-title{font-size:1.55rem;font-weight:800;color:#fff;line-height:1.25;margin-bottom:10px;}
+.wh-title em{color:#60a5fa;font-style:normal;}
+.wh-sub{font-size:.86rem;color:#94a3b8;line-height:1.65;max-width:500px;}
+.how-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;}
+.how-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:16px;}
+.how-num{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:6px;}
+.how-icon{font-size:1.4rem;margin-bottom:8px;display:block;}
+.how-title{font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:4px;}
+.how-desc{font-size:.74rem;color:var(--sub);line-height:1.5;}
+
+/* ROLE */
+.role-picker-label{font-size:.84rem;font-weight:700;color:var(--text);margin-bottom:12px;}
+.role-picker-sub{font-size:.78rem;color:var(--sub);margin-bottom:16px;line-height:1.55;}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px;}
+.role-btn{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:9px;background:var(--bg);cursor:pointer;transition:all .15s;font-family:inherit;text-align:left;width:100%;}
+.role-btn:hover{border-color:var(--blue);background:var(--blue-l);}
+.role-btn.selected{border-color:var(--blue);background:var(--blue-l);box-shadow:0 0 0 2px rgba(21,112,239,.15);}
+.role-icon{font-size:1.4rem;flex-shrink:0;}
+.role-name{font-size:.84rem;font-weight:700;color:var(--text);}
+.role-desc{font-size:.72rem;color:var(--sub);margin-top:2px;line-height:1.4;}
+
+/* EMAIL */
+.email-chrome{background:#e8eaed;border-radius:8px 8px 0 0;padding:7px 12px;display:flex;align-items:center;gap:7px;border:1px solid #d0d5dd;border-bottom:none;}
+.c-dot{width:10px;height:10px;border-radius:50%;}
+.c-bar{flex:1;background:#fff;border-radius:4px;padding:3px 10px;font-size:.68rem;color:var(--sub);border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;}
+.email-client{background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;margin-bottom:16px;box-shadow:0 2px 14px rgba(0,0,0,.06);}
+.e-toolbar{display:flex;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);background:#fafafa;}
+.e-btn{padding:3px 9px;border-radius:4px;font-size:.7rem;font-weight:600;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--sub);}
+.e-hdr{padding:14px 18px;border-bottom:1px solid var(--border);}
+.sender-row{display:flex;align-items:center;gap:9px;margin-bottom:6px;}
+.av{width:28px;height:28px;border-radius:50%;background:#dde3f0;display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--sub);flex-shrink:0;}
+.s-name{font-size:.84rem;font-weight:600;}
+.s-addr{font-size:.7rem;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+.s-time{font-size:.7rem;color:var(--muted);margin-left:auto;}
+.e-to{font-size:.72rem;color:var(--muted);margin-bottom:8px;}
+.e-subj{font-size:.96rem;font-weight:700;margin-bottom:6px;}
+.e-body{padding:16px 18px;font-size:.84rem;color:var(--text);line-height:1.72;}
+.e-attach{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 12px;background:var(--bg);border-radius:6px;border:1px solid var(--border);cursor:pointer;}
+.e-attach:hover{border-color:var(--red);}
+
+/* FQ */
+.fq-box{background:linear-gradient(135deg,var(--dark),#1e293b);border-radius:10px;padding:24px;margin-bottom:16px;}
+.fq-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin-bottom:8px;}
+.fq-q{font-size:1.02rem;font-weight:700;color:#fff;line-height:1.4;margin-bottom:14px;}
+.fq-opts{display:flex;flex-direction:column;gap:7px;}
+.fq-btn{padding:10px 14px;border-radius:7px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:.81rem;cursor:pointer;text-align:left;font-family:inherit;transition:all .15s;}
+.fq-btn:hover{border-color:#64748b;color:#fff;background:#273548;}
+.fq-btn.sel-right{border-color:#34d399;background:rgba(52,211,153,.12);color:#34d399;}
+.fq-btn.sel-wrong{border-color:#f87171;background:rgba(248,113,113,.1);color:#f87171;}
+.fq-btn.rev-right{border-color:rgba(52,211,153,.4);background:rgba(52,211,153,.05);color:#64748b;cursor:default;}
+.fq-result{margin-top:12px;padding:11px 13px;border-radius:7px;font-size:.79rem;line-height:1.55;display:none;}
+.fq-result.show{display:block;}
+.fq-result.good{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:#34d399;}
+.fq-result.bad{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:#fca5a5;}
+.fq-result.warn{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);color:#fbbf24;}
+
+/* PROTAGONIST */
+.prot-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;display:grid;grid-template-columns:180px 1fr;}
+.prot-l{background:linear-gradient(160deg,#1a1a2e,#0f172a);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 16px;gap:12px;}
+.prot-av{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#374151,#1f2937);display:flex;align-items:center;justify-content:center;font-size:2rem;border:3px solid rgba(255,255,255,.1);}
+.prot-nm{font-size:.82rem;font-weight:700;color:#fff;}
+.prot-rl{font-size:.68rem;color:#94a3b8;text-align:center;line-height:1.4;}
+.prot-co{font-size:.62rem;color:#475569;background:rgba(255,255,255,.06);padding:2px 8px;border-radius:4px;}
+.prot-r{padding:24px;}
+.prot-title{font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.4;}
+.prot-body{font-size:.83rem;color:var(--sub);line-height:1.65;margin-bottom:14px;}
+.prot-facts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.pf{background:var(--bg);border-radius:7px;padding:9px 11px;}
+.pf-l{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:2px;}
+.pf-v{font-size:.8rem;color:var(--text);font-weight:600;}
+.verdict-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px;}
+.vb-q{font-size:.92rem;font-weight:700;margin-bottom:12px;}
+.v-opts{display:flex;gap:8px;}
+.v-btn{flex:1;padding:10px 8px;border-radius:7px;border:1px solid var(--border);background:var(--bg);font-size:.78rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;text-align:center;line-height:1.3;}
+.v-btn:hover{border-color:var(--blue);background:var(--blue-l);color:var(--blue);}
+.v-result{margin-top:12px;padding:13px 15px;border-radius:8px;display:none;font-size:.82rem;line-height:1.65;background:var(--blue-l);border:1px solid var(--blue-m);color:var(--sub);}
+.v-result.show{display:block;}
+
+/* HOTSPOTS */
+.suspicious{background:rgba(220,104,3,.1);border-bottom:2px solid var(--orange);cursor:pointer;padding:0 1px;border-radius:2px;transition:background .15s;}
+.suspicious:hover{background:rgba(220,104,3,.22);}
+.suspicious.ck{background:rgba(3,152,85,.1);border-bottom-color:var(--green);}
+.hm{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--orange);color:#fff;font-size:.58rem;font-weight:900;cursor:pointer;vertical-align:middle;margin-left:3px;transition:all .2s;animation:pm 2s ease-in-out infinite;position:relative;top:-1px;flex-shrink:0;}
+.hm.ck{background:var(--green);animation:none;}
+@keyframes pm{0%,100%{box-shadow:0 0 0 0 rgba(220,104,3,.4);}50%{box-shadow:0 0 0 5px rgba(220,104,3,0);}}
+
+/* KEY FIX: Panel uses absolute positioning inside .page-wrapper */
+.fp-drag-handle{display:none;width:36px;height:4px;background:var(--border);border-radius:99px;margin:10px auto 0;}
+@media(max-width:900px){.fp-drag-handle{display:block;}}
+.fp-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);}
+.fp-t{font-size:.88rem;font-weight:700;}
+.fp-x{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);}
+.fp-bd{padding:16px 18px;flex:1;}
+.fpf{background:var(--bg);border-radius:8px;padding:12px;opacity:0;transform:translateY(5px);transition:all .22s;margin-bottom:9px;}
+.fpf.v{opacity:1;transform:translateY(0);}
+.fpf-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.fpf-ic{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0;}
+.ic-r{background:var(--red-l);}.ic-o{background:var(--orange-l);}
+.fpf-ti{font-size:.78rem;font-weight:700;}
+.fpf-tx{font-size:.74rem;color:var(--sub);line-height:1.55;}
+.fpf-code{font-family:'IBM Plex Mono',monospace;font-size:.64rem;background:#1e293b;color:#94a3b8;border-radius:5px;padding:7px 10px;margin-top:7px;white-space:pre;}
+.fp-rule{margin-top:8px;padding:9px 11px;border-radius:6px;font-size:.73rem;line-height:1.5;}
+.fp-rule strong{display:block;font-weight:700;margin-bottom:2px;}
+.rr{background:var(--red-l);border:1px solid #fecdca;color:var(--red);}
+.ro{background:var(--orange-l);border:1px solid #fedf89;color:var(--orange);}
+.rb{background:var(--blue-l);border:1px solid var(--blue-m);color:var(--blue);}
+.ck-count{font-size:.77rem;color:var(--sub);font-weight:500;margin-bottom:8px;}
+.found-banner{background:var(--green);color:#fff;border-radius:7px;padding:10px 16px;font-size:.81rem;font-weight:600;display:none;margin-bottom:14px;}
+.found-banner.show{display:block;}
+
+/* MASKS */
+.masks{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:14px 0 6px;}
+.mask{border-radius:8px;overflow:hidden;border:1px solid var(--border);cursor:pointer;transition:transform .15s,box-shadow .15s;}
+.mask:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.07);}
+.mask-tb{padding:6px 11px;font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;}
+.mask-bd{padding:13px;background:var(--surface);}
+.mask-ic{font-size:1.4rem;margin-bottom:6px;display:block;}
+.mask-nm{font-size:.78rem;font-weight:700;margin-bottom:3px;}
+.mask-ds{font-size:.71rem;color:var(--sub);line-height:1.45;}
+.mask-ex{font-size:.68rem;font-style:italic;margin-top:7px;padding:5px 8px;border-radius:4px;border-left:2px solid;line-height:1.35;}
+.mask-ht{font-size:.63rem;color:var(--muted);margin-top:6px;}
+.mask.rev .mask-front{display:none;}
+.mask.rev .mask-back{display:block;animation:up .2s;}
+.mask-back{display:none;}
+
+/* DECISION */
+.choices{display:flex;flex-direction:column;gap:8px;}
+.choice{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);cursor:pointer;transition:all .15s;text-align:left;width:100%;font-family:inherit;}
+.choice:hover:not(:disabled){border-color:var(--blue);background:var(--blue-l);}
+.choice:disabled{cursor:default;}
+.choice.selected-d{border-color:var(--blue);background:var(--blue-l);}
+.ch-lt{width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid var(--border);font-size:.65rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--sub);margin-top:1px;}
+.ch-tx{font-size:.82rem;color:var(--text);line-height:1.45;}
+.ch-fb{border-radius:8px;padding:12px 14px;margin-top:8px;display:none;animation:up .22s ease;font-size:.8rem;line-height:1.55;}
+.ch-fb.show{display:block;}
+.ch-fb.neutral{background:var(--blue-l);border:1px solid var(--blue-m);}
+.cf-lb-neutral{font-size:.71rem;font-weight:700;color:var(--blue);margin-bottom:3px;}
+
+/* RULES */
+.tl{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0;}
+.tl-col{border-radius:8px;overflow:hidden;border:1px solid var(--border);}
+.tl-hd{padding:8px 12px;font-size:.67rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;}
+.tl-hd.good{background:var(--green);color:#fff;}
+.tl-hd.bad{background:var(--red);color:#fff;}
+.tl-bd{background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:8px;}
+.tl-rw{display:flex;gap:8px;}
+.tl-dt{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.tl-dt.good{background:var(--green);}.tl-dt.bad{background:var(--red);}
+.tl-tm{font-family:'IBM Plex Mono',monospace;font-size:.64rem;font-weight:600;min-width:44px;flex-shrink:0;padding-top:1px;}
+.tl-tm.good{color:var(--green);}.tl-tm.bad{color:var(--red);}
+.tl-ev{font-size:.74rem;color:var(--sub);line-height:1.4;}
+.tl-ev strong{color:var(--text);display:block;font-size:.76rem;}
+.tl-res{padding:8px 12px;font-size:.74rem;font-weight:700;text-align:center;}
+.tl-res.good{background:var(--green);color:#fff;}
+.tl-res.bad{background:var(--red);color:#fff;}
+.rules-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0;}
+.rule{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.rule-n{font-size:2rem;font-weight:900;color:var(--blue);font-family:'IBM Plex Mono',monospace;line-height:1;margin-bottom:10px;}
+.rule-title{font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:5px;}
+.rule-body{font-size:.76rem;color:var(--sub);line-height:1.55;}
+.rule-examples{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+.rule-eg{font-size:.7rem;color:var(--muted);padding:4px 8px;background:var(--bg);border-radius:4px;line-height:1.4;}
+.rule-eg::before{content:"e.g. ";font-weight:600;color:var(--blue);}
+.done-card{background:linear-gradient(135deg,var(--dark),#1e293b);border-radius:10px;padding:26px 28px;display:flex;align-items:center;gap:20px;margin-top:4px;}
+.done-ic{font-size:2.2rem;flex-shrink:0;}
+.done-t{font-size:.96rem;font-weight:700;color:#fff;margin-bottom:4px;}
+.done-s{font-size:.78rem;color:#94a3b8;line-height:1.55;}
+
+/* ── ZOOM 1.25 ── */
+body { zoom: 1.25; }
+@supports not (zoom: 1.25) {
+  body { transform: scale(1.25); transform-origin: top left; width: 80%; }
+}
+
+/* ── FULLSCREEN BUTTON ── */
+.fs-btn {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 9990;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.fs-btn:hover { background: var(--bg); }
+.fs-btn svg { width: 14px; height: 14px; color: var(--sub); }
+
+/* ── TYPING INDICATOR ── */
+.typing-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 10px 0;
+  height: 40px;
+}
+.typing-indicator .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: typeBounce 1.2s infinite;
+}
+.typing-indicator .dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-indicator .dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typeBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30% { transform: translateY(-4px); opacity: 0.8; }
+}
+
+/* ── STAGGERED REVEAL ── */
+.stagger-el {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.45s ease, transform 0.45s ease;
+}
+.stagger-el.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── TAG PULSE ── */
+.tag.pulse {
+  animation: tagPulse 1.8s ease-out;
+}
+@keyframes tagPulse {
+  0% { box-shadow: 0 0 0 0 rgba(217,45,32,0.45); }
+  40% { box-shadow: 0 0 0 8px rgba(217,45,32,0.0); }
+  100% { box-shadow: 0 0 0 0 rgba(217,45,32,0.0); }
+}
+
+/* ── HEARTBEAT ── */
+.heartbeat-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+.heartbeat-icon {
+  width: 13px; height: 13px;
+  color: var(--muted);
+  transition: color 0.5s;
+}
+.heartbeat-icon.hot { color: var(--red); }
+.heartbeat-line {
+  width: 44px; height: 14px;
+  overflow: hidden;
+}
+.heartbeat-line svg { width: 100%; height: 100%; }
+.heartbeat-line svg polyline {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: ecgDraw var(--hb-speed, 2.4s) linear infinite;
+  transition: stroke 0.5s;
+}
+.heartbeat-line.hot svg polyline { stroke: var(--red); }
+@keyframes ecgDraw { to { stroke-dashoffset: 0; } }
+
+/* ── CHOICES HISTORY ── */
+.history-toggle {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 9990;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: .65rem;
+  color: var(--sub);
+  transition: background 0.15s;
+}
+.history-toggle:hover { background: var(--bg); }
+.history-toggle svg { width: 13px; height: 13px; color: var(--muted); flex-shrink: 0; }
+.history-toggle.show { display: flex; }
+
+.history-panel {
+  position: fixed;
+  bottom: 44px;
+  left: 12px;
+  z-index: 9989;
+  width: 280px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+  padding: 12px 14px;
+  display: none;
+  animation: up 0.25s ease;
+}
+.history-panel.open { display: block; }
+.history-panel-title {
+  font-size: .62rem;
+  font-family: 'IBM Plex Mono', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.history-entry {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.history-entry:last-child { border-bottom: none; }
+.history-step-label {
+  font-size: .6rem;
+  font-family: 'IBM Plex Mono', monospace;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.history-choice-text {
+  font-size: .72rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+</style>
+</head>
+<body>
+
+<!-- Fullscreen toggle -->
+<button class="fs-btn" id="fsBtn" onclick="toggleFs()" title="Fullscreen">
+  <svg id="fsExpand" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="10,2 14,2 14,6"/><polyline points="6,14 2,14 2,10"/><line x1="14" y1="2" x2="9.5" y2="6.5"/><line x1="2" y1="14" x2="6.5" y2="9.5"/>
+  </svg>
+  <svg id="fsShrink" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+    <polyline points="4,10 4,14 8,14"/><polyline points="12,6 12,2 8,2"/><line x1="4" y1="14" x2="8.5" y2="9.5"/><line x1="12" y1="2" x2="7.5" y2="6.5"/>
+  </svg>
+</button>
+
+<!-- Choices history -->
+<button class="history-toggle" id="historyBtn" onclick="toggleHistory()">
+  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="8" cy="8" r="6.5"/><polyline points="8,4.5 8,8 10.5,9.5"/>
+  </svg>
+  <span>Your choices</span>
+</button>
+<div class="history-panel" id="historyPanel"></div>
+
+<div class="top-bar">
+  <div class="logo">
+    <div class="logo-box">
+      <svg viewBox="0 0 14 14" fill="none"><path d="M7 1L13 4.5V9.5L7 13L1 9.5V4.5Z" stroke="#fff" stroke-width="1.5"/><circle cx="7" cy="7" r="1.5" fill="#fff"/></svg>
+    </div>
+    Phishing Awareness
+  </div>
+  <span class="top-sub"></span>
+  <div class="top-right">
+    <div class="role-pill" id="rolePill"></div>
+    <div class="prog-wrap">
+      <span id="pLbl">— / 10</span>
+      <div class="prog-track"><div class="prog-fill" id="pFill" style="width:0%"></div></div>
+      <div class="heartbeat-wrap" id="heartbeatWrap">
+        <svg class="heartbeat-icon" id="hbIcon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 14s-5.5-4-5.5-7.5a3.5 3.5 0 0 1 7 0 3.5 3.5 0 0 1 7 0C16.5 10 8 14 8 14z"/>
+        </svg>
+        <div class="heartbeat-line" id="hbLine">
+          <svg viewBox="0 0 48 14" preserveAspectRatio="none">
+            <polyline points="0,7 8,7 12,7 14,2 16,12 18,5 20,9 22,7 30,7 34,7 36,2 38,12 40,5 42,9 44,7 48,7"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="progress-stripe"><div class="progress-stripe-fill" id="pStripe"></div></div>
+
+<!-- KEY FIX: page-wrapper is relative so the absolute panel is contained inside it -->
+<div class="page-wrapper">
+
+  <!-- Panel & Backdrop inside the wrapper -->
+  <div class="fp-backdrop" id="fpBackdrop" onclick="closeP()"></div>
+  <div class="fp" id="fp">
+    <div class="fp-drag-handle"></div>
+    <div class="fp-hdr">
+      <div class="fp-t" id="fpT"></div>
+      <button class="fp-x" onclick="closeP()">✕</button>
+    </div>
+    <div class="fp-bd" id="fpB"></div>
+  </div>
+
+  <div class="layout">
+    <main class="main">
+
+<!-- ① INTRO -->
+<div class="screen active" id="s0">
+  <div class="welcome-hero">
+    <div class="wh-eyebrow">Phishing Awareness</div>
+    <div class="wh-title">Someone lost <em>a lot</em> to a single email.<br>You're about to read it.</div>
+    <div class="wh-sub">This isn't a list of tips. It's a story that plays out the way these attacks actually work — built around your role, so the scenario feels relevant rather than generic.</div>
+  </div>
+  <div class="how-grid">
+    <div class="how-card"><span class="how-icon">📧</span><div class="how-num">Steps 1–2</div><div class="how-title">Read the email</div><div class="how-desc">You see the message with no context, just like it arrived. You decide what to do with it.</div></div>
+    <div class="how-card"><span class="how-icon">🔍</span><div class="how-num">Steps 3–6</div><div class="how-title">Follow the story</div><div class="how-desc">You find out what happened and work through the email to see exactly how it was built.</div></div>
+    <div class="how-card"><span class="how-icon">🛡️</span><div class="how-num">Steps 7–10</div><div class="how-title">Verify and decide</div><div class="how-desc">You face the same situation. Then three principles that hold regardless of your role.</div></div>
+  </div>
+  <div class="row" style="margin-top:8px"><div></div><button class="btn btn-primary" onclick="step(1)">Choose your role →</button></div>
+</div>
+
+<!-- ② ROLE PICKER -->
+<div class="screen" id="s1">
+  <div class="card">
+    <div class="role-picker-label">Which best describes your role?</div>
+    <div class="role-picker-sub">The scenario adapts to feel relevant to you. There's no wrong answer — pick whichever feels closest.</div>
+    <div class="role-grid">
+      <button class="role-btn" id="role-finance" onclick="pickRole('finance')"><span class="role-icon">💰</span><div><div class="role-name">Finance / Accounts</div><div class="role-desc">Payments, invoicing, supplier relationships</div></div></button>
+      <button class="role-btn" id="role-hr" onclick="pickRole('hr')"><span class="role-icon">👥</span><div><div class="role-name">HR / People</div><div class="role-desc">Employee data, payroll, people processes</div></div></button>
+      <button class="role-btn" id="role-it" onclick="pickRole('it')"><span class="role-icon">💻</span><div><div class="role-name">IT / Technical</div><div class="role-desc">Systems, credentials, infrastructure</div></div></button>
+      <button class="role-btn" id="role-ops" onclick="pickRole('ops')"><span class="role-icon">📋</span><div><div class="role-name">Operations / Admin</div><div class="role-desc">Office management, executive support, logistics</div></div></button>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-top:8px">Any role works — the mechanisms behind these attacks are the same everywhere.</div>
+  </div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(0)">← Back</button><button class="btn btn-primary" id="roleNext" onclick="step(2)" disabled>Read the email →</button></div>
+</div>
+
+<!-- ③ EMAIL (clean read) -->
+<div class="screen" id="s2">
+  <div class="eyebrow"><span class="tag tag-orange" id="emailTimeTag">—</span><span style="font-size:.73rem;color:var(--muted)">An email arrives in your inbox.</span></div>
+  <div class="email-chrome"><div class="c-dot" style="background:#ff5f57"></div><div class="c-dot" style="background:#febc2e"></div><div class="c-dot" style="background:#28c840"></div><div class="c-bar" id="emailChromebar">—</div></div>
+  <div class="email-client">
+    <div class="e-toolbar"><div class="e-btn">← Back</div><div class="e-btn">Reply</div><div class="e-btn">Forward</div><div class="e-btn" style="color:var(--red)">Delete</div></div>
+    <div class="e-hdr">
+      <div class="sender-row"><div class="av" id="emailAvatar">??</div><div><div class="s-name" id="emailSenderName">—</div><div class="s-addr" id="emailSenderAddr">—</div></div><div class="s-time" id="emailTime">—</div></div>
+      <div class="e-to" id="emailTo">—</div><div class="e-subj" id="emailSubject">—</div>
+    </div>
+    <div class="e-body" id="emailBody">—</div>
+  </div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(1)">← Back</button><button class="btn btn-primary" onclick="step(3)">What would you do? →</button></div>
+</div>
+
+<!-- ④ FIRST QUESTION -->
+<div class="screen" id="s3">
+  <div class="fq-box">
+    <div class="fq-label">Your call</div>
+    <div class="fq-q" id="fqQuestion">—</div>
+    <div class="fq-opts" id="fqOpts"></div>
+    <div class="fq-result" id="fqRes"></div>
+  </div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(2)">← Back</button><button class="btn btn-primary" id="fqNext" onclick="step(4)" disabled>Find out what happened →</button></div>
+</div>
+
+<!-- ⑤ PROTAGONIST + VERDICT -->
+<div class="screen" id="s4">
+  <div class="eyebrow"><span class="tag tag-blue">What happened</span></div>
+  <div class="prot-card">
+    <div class="prot-l"><div class="prot-av" id="protAvatar">👤</div><div class="prot-nm" id="protName">—</div><div class="prot-rl" id="protRole">—</div><div class="prot-co" id="protCompany">—</div></div>
+    <div class="prot-r"><div class="prot-title" id="protTitle">—</div><div class="prot-body" id="protBody">—</div><div class="prot-facts" id="protFacts"></div></div>
+  </div>
+  <div class="verdict-box">
+    <div class="vb-q">Looking at this now — do you think they made a mistake?</div>
+    <div class="v-opts">
+      <button class="v-btn" onclick="answerV('yes')">Yes — they should have spotted it</button>
+      <button class="v-btn" onclick="answerV('maybe')">It's more complicated than that</button>
+      <button class="v-btn" onclick="answerV('no')">Not really — this was hard to catch</button>
+    </div>
+    <div class="v-result" id="vRes"></div>
+  </div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(3)">← Back</button><button class="btn btn-primary" id="verdictNext" onclick="step(5)" disabled>See what was built into the email →</button></div>
+</div>
+
+<!-- ⑥ ANNOTATED EMAIL + HOTSPOTS -->
+<div class="screen" id="s5">
+  <div class="eyebrow"><span class="tag tag-red">Inside the attack</span><span style="font-size:.73rem;color:var(--muted)">The same email — annotated</span></div>
+  <div class="card" style="padding:12px 18px;margin-bottom:12px;"><div class="body">Click the <span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--orange);color:#fff;font-size:.58rem;font-weight:900;vertical-align:middle">!</span> markers and highlighted text to see what the attacker was doing.</div></div>
+  <div class="email-chrome"><div class="c-dot" style="background:#ff5f57"></div><div class="c-dot" style="background:#febc2e"></div><div class="c-dot" style="background:#28c840"></div><div class="c-bar" id="insideChromebar">—</div></div>
+  <div class="email-client">
+    <div class="e-toolbar"><div class="e-btn">← Back</div><div class="e-btn">Reply</div><div class="e-btn">Forward</div></div>
+    <div class="e-hdr">
+      <div class="sender-row">
+        <div class="av" id="insideAvatar">??</div>
+        <div>
+          <div class="s-name" id="insideSenderName">—</div>
+          <div class="s-addr">&lt;<span class="suspicious" id="hs-domain" onclick="ck('domain',event)">—</span><span class="hm" id="hm-domain" onclick="ck('domain',event)">!</span>&gt;</div>
+        </div>
+        <div class="s-time" id="insideTime"><span id="insideTimeText">—</span> <span class="hm" id="hm-timing" onclick="ck('timing',event)" style="margin-left:4px">!</span></div>
+      </div>
+      <div class="e-to" id="insideTo">—</div>
+      <div class="e-subj" id="insideSubject">—</div>
+    </div>
+    <div class="e-body" id="insideBody">—</div>
+  </div>
+  <div class="ck-count" id="ckCount">Click the markers to investigate</div>
+  <div class="found-banner" id="foundBanner">✓ You found everything. Now you can see the full picture.</div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(4)">← Back</button><button class="btn btn-primary" onclick="step(6)">See the psychological triggers →</button></div>
+</div>
+
+<!-- ⑦ PSYCHOLOGICAL MASKS -->
+<div class="screen" id="s6">
+  <div class="eyebrow"><span class="tag tag-red">Psychological triggers</span></div>
+  <div class="card" style="padding:12px 18px;margin-bottom:12px;"><div class="body">Attacks like this use predictable psychological triggers. Click each card to see how it was used here.</div></div>
+  <div class="masks">
+    <div class="mask" id="mask-helpful" onclick="revMask('helpful')">
+      <div class="mask-tb" style="background:var(--orange-l);color:var(--orange)">The Helpful Colleague</div>
+      <div class="mask-front"><div class="mask-bd"><span class="mask-ic">🤝</span><div class="mask-nm">Reciprocity &amp; trust</div><div class="mask-ds">A request framed as a normal favour between colleagues. Refusing feels like distrust.</div><div class="mask-ht">↓ click to see if it was used here</div></div></div>
+      <div class="mask-back"><div class="mask-bd" style="background:var(--orange-l)"><span class="mask-ic">🤝</span><div class="mask-nm" style="color:var(--orange)">Used in this attack</div><div class="mask-ds" id="maskHelpfulDesc">—</div><div class="mask-ex" id="maskHelpfulEx" style="background:rgba(220,104,3,.08);border-left-color:var(--orange);color:var(--orange)">—</div></div></div>
+    </div>
+    <div class="mask" id="mask-ghost" onclick="revMask('ghost')">
+      <div class="mask-tb" style="background:var(--red-l);color:var(--red)">The Technical Ghost</div>
+      <div class="mask-front"><div class="mask-bd"><span class="mask-ic">⚡</span><div class="mask-nm">Urgency &amp; pressure</div><div class="mask-ds">A manufactured deadline that kills the impulse to stop and check.</div><div class="mask-ht">↓ click to see if it was used here</div></div></div>
+      <div class="mask-back"><div class="mask-bd" style="background:var(--red-l)"><span class="mask-ic">⚡</span><div class="mask-nm" style="color:var(--red)">Used in this attack</div><div class="mask-ds" id="maskGhostDesc">—</div><div class="mask-ex" id="maskGhostEx" style="background:rgba(217,45,32,.07);border-left-color:var(--red);color:var(--red)">—</div></div></div>
+    </div>
+    <div class="mask" id="mask-gossip" onclick="revMask('gossip')">
+      <div class="mask-tb" style="background:var(--purple-l);color:var(--purple)">The Gossip Mask</div>
+      <div class="mask-front"><div class="mask-bd"><span class="mask-ic">👀</span><div class="mask-nm">Curiosity &amp; lure</div><div class="mask-ds">Something too personal, exclusive or intriguing not to open.</div><div class="mask-ht">↓ click for examples</div></div></div>
+      <div class="mask-back"><div class="mask-bd" style="background:var(--purple-l)"><span class="mask-ic">👀</span><div class="mask-nm" style="color:var(--purple)">Watch for</div><div class="mask-ds">"Your salary review is ready." "Someone viewed your profile." Curiosity fires before judgment.</div><div class="mask-ex" style="background:rgba(105,65,198,.07);border-left-color:var(--purple);color:var(--purple)">"You've been mentioned in a document. Click to view."</div></div></div>
+    </div>
+  </div>
+  <div style="font-size:.73rem;color:var(--muted);margin-top:4px">If an email makes you feel urgency, social pressure or curiosity — that feeling is the attack. Name the trigger. It creates distance.</div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(5)">← Back</button><button class="btn btn-primary" onclick="step(7)">Now — your turn →</button></div>
+</div>
+
+<!-- ⑧ DECISION -->
+<div class="screen" id="s7">
+  <div class="eyebrow"><span class="tag tag-orange">Your turn</span></div>
+  <div class="card" style="padding:14px 18px;margin-bottom:14px;">
+    <div style="font-size:1rem;font-weight:700;margin-bottom:4px" id="decisionQ">—</div>
+    <div class="body">All four are genuinely dangerous. Which one concerns you most — and why does it matter?</div>
+  </div>
+  <div class="choices" id="dChoices"></div>
+  <div class="ch-fb" id="dFb"></div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(6)">← Back</button><button class="btn btn-primary" id="decisionNext" onclick="step(8)" disabled>See the outcome →</button></div>
+</div>
+
+<!-- ⑨ TIMELINE -->
+<div class="screen" id="s8">
+  <div class="eyebrow"><span class="tag tag-green">What the outcome depended on</span></div>
+  <div class="card" style="padding:14px 18px;margin-bottom:6px;"><div style="font-size:1rem;font-weight:700;margin-bottom:4px" id="rulesHeadline">—</div><div class="body">Here's why the timing mattered — and what a single verification step would have changed.</div></div>
+  <div class="tl" id="rulesTimeline"></div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(7)">← Back</button><button class="btn btn-primary" onclick="step(9)">The three rules →</button></div>
+</div>
+
+<!-- ⑩ THREE RULES + DONE -->
+<div class="screen" id="s9">
+  <div class="eyebrow"><span class="tag tag-green">Three rules</span></div>
+  <div style="font-size:.84rem;font-weight:700;color:var(--text);margin-bottom:12px">The three rules. Same for every role, every situation.</div>
+  <div class="rules-grid">
+    <div class="rule"><div class="rule-n">01</div><div class="rule-title">Verify through a channel you already control</div><div class="rule-body">Any unusual request — financial, data, credentials, access — needs verification through something you already have: a phone number from your records, an internal directory, walking over to someone's desk. Not a number or link from the email itself.</div><div class="rule-examples"><div class="rule-eg">Calling a supplier on their existing number</div><div class="rule-eg">Messaging a colleague on your internal chat</div><div class="rule-eg">Walking to the person's desk</div></div></div>
+    <div class="rule"><div class="rule-n">02</div><div class="rule-title">Urgency is a reason to slow down, not speed up</div><div class="rule-body">Pressure and deadlines are the most reliable signal that something is wrong. Legitimate requests — from real colleagues, real suppliers, real IT teams — can wait ninety seconds for a confirmation. Fraudulent ones can't afford to.</div><div class="rule-examples"><div class="rule-eg">"Before the banking cutoff at 4 PM"</div><div class="rule-eg">"I'm in a meeting, need this now"</div><div class="rule-eg">"Every minute of downtime costs us"</div></div></div>
+    <div class="rule"><div class="rule-n">03</div><div class="rule-title">More than half-sure it's wrong? Report it.</div><div class="rule-body">You don't need certainty. If something feels off — the domain, the timing, the request itself — that's enough. Security teams would rather investigate a hundred false alarms than miss one real incident. Reporting after you've already acted still matters: it limits the damage.</div><div class="rule-examples"><div class="rule-eg">Forward the email to your security team</div><div class="rule-eg">Flag it even if you already clicked</div><div class="rule-eg">Don't delete the email — it's evidence</div></div></div>
+  </div>
+  <div class="done-card"><div class="done-ic">✓</div><div><div class="done-t" id="doneTitle">—</div><div class="done-s">The attack worked because it looked completely legitimate. The defence isn't sharper instincts — it's a rule that fires automatically: <strong style="color:#e2e8f0">verify through a channel you already control.</strong></div></div></div>
+  <div class="row"><button class="btn btn-ghost" onclick="step(8)">← Back</button><button class="btn btn-primary" onclick="restart()">Try a different role →</button></div>
+</div>
+
+    </main>
+  </div>
+</div><!-- end page-wrapper -->
+
+<script>
+const ROLES={
+  finance:{
+    label:'Finance / Accounts',icon:'💰',
+    protagonist:{name:'Sarah Chen',role:'Accounts Payable Specialist',company:'BuildCorp Construction',pronoun:'she',emoji:'👩‍💼',relationship:"supplier she'd worked with for three years",loss:'£94,000 transferred to an attacker\'s account'},
+    sender:{initials:'MT',name:'Michael Thompson',addrDisplay:'billing@thompsoneng-billing.com',fakeDomain:'thompsoneng-billing.com',realDomain:'thompsoneng.com',time:'Fri 3:47 PM',chromebar:'mail.buildcorp.co.uk / inbox'},
+    emailSubject:'Updated banking details — please action before 4 PM',
+    emailBody:`<p>Hi Sarah,</p><p style="margin-top:10px">Hope you're well. Quick heads up — we've consolidated our invoicing to a new billing entity. Could you update our payment details in your system before you process any invoices today? We need this done before the banking cutoff at 4 PM.</p><p style="margin-top:10px">New details are in the attached PDF. Let me know once updated.</p><p style="margin-top:10px">Thanks,<br>Michael</p><div class="e-attach"><span style="font-size:1.2rem">📎</span><div><div style="font-weight:600;font-size:.8rem">Thompson_Engineering_Banking_Details.pdf</div><div style="font-size:.7rem;color:var(--muted)">245 KB</div></div></div>`,
+    emailBodyAnnotated:`<p>Hi Sarah,</p><p style="margin-top:10px">Hope you're well. Quick heads up — we've consolidated our invoicing to a new billing entity. Could you update our payment details in your system before you process any invoices today? <span class="suspicious" id="hs-urgency" onclick="ck('urgency',event)">We need this done before the banking cutoff at 4 PM.</span><span class="hm" id="hm-urgency" onclick="ck('urgency',event)">!</span></p><p style="margin-top:10px">New details are in the attached PDF. Let me know once updated.</p><p style="margin-top:10px">Thanks,<br>Michael</p><div class="e-attach" onclick="ck('attachment',event)"><span style="font-size:1.2rem">📎</span><div><div style="font-weight:600;font-size:.8rem">Thompson_Engineering_Banking_Details.pdf</div><div style="font-size:.7rem;color:var(--muted)">245 KB</div></div><span class="hm" id="hm-attachment" onclick="ck('attachment',event)" style="margin-left:auto">!</span></div>`,
+    fqContext:"You're the accounts payable specialist. The sender is a supplier you've worked with for three years.",
+    fqOpts:[
+      {text:"Open the PDF and update the payment details — Michael is a known contact",correct:false,type:'bad',feedback:"This is what happened. The PDF contained fraudulent bank details. Familiarity with a sender's name isn't the same as verifying the request came from them."},
+      {text:"Reply to the email and ask Michael to confirm the request",correct:false,type:'warn',feedback:"Replying uses a channel the attacker controls — they'll confirm it. Verification has to happen through something you already have, not something the email provides."},
+      {text:"Verify with the sender — use a number or address you already have, not anything from the email",correct:true,type:'good',feedback:"Correct. Verification through a channel you already control is the one response that works regardless of how convincing the email looks."},
+      {text:"Forward to your manager and wait for them to decide what to do",correct:false,type:'warn',feedback:"Your manager can be misled by the same email. Escalating isn't the same as verifying — what matters is checking directly with the apparent sender through a contact you already have."}
+    ],
+    verdict:{facts:[['Years in role','4 years'],['Knew the sender','3 years'],['Amount lost','£94,000'],['Breach detected','60+ hours later']]},
+    maskHelperDesc:'"Quick heads up" and "let me know once updated" frames a fraud as a casual favour. Three years of relationship made refusing feel like an accusation.',
+    maskHelperEx:'"Let me know once updated."',
+    maskGhostDesc:'"Banking cutoff at 4 PM" was invented. Its only purpose was to prevent a verification call.',
+    maskGhostEx:'"We need this done before the banking cutoff at 4 PM."',
+    hotspots:{
+      domain:{t:'🚨 Fake domain',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-r">🔍</div><div class="fpf-ti">Domain spoofing</div></div><div class="fpf-tx">Real domain: <strong>thompsoneng-billing.com</strong> — not Thompson Engineering's actual domain. The "-billing" suffix sounds plausible but was registered by the attacker.</div><div class="fpf-code">FAKE: thompsoneng-billing.com\nREAL: thompsoneng.com</div></div><div class="fp-rule rb"><strong>How to check</strong>Click or hover the sender name. If the domain doesn't exactly match — stop.</div>`},
+      timing:{t:'⚠ Deliberate timing',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⏰</div><div class="fpf-ti">Friday 3:47 PM — chosen deliberately</div></div><div class="fpf-tx">3:47 PM on a Friday gives 13 minutes before the invented cutoff — enough to create panic, not enough time to verify.</div></div><div class="fp-rule ro"><strong>Counter-move</strong>Real deadlines survive a quick verification. Fake ones don't.</div>`},
+      urgency:{t:'⚠ Manufactured pressure',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⚡</div><div class="fpf-ti">Three triggers at once</div></div><div class="fpf-tx">Authority (trusted supplier) + urgency (fake 4 PM deadline) + plausibility (routine payment request). Each alone is manageable. Together they overwhelm normal judgment.</div></div><div class="fp-rule ro"><strong>Name it</strong>"This is manufactured pressure." Saying it out loud creates distance.</div>`},
+      attachment:{t:'🚨 Dangerous attachment',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-r">📎</div><div class="fpf-ti">Never act on PDF banking changes</div></div><div class="fpf-tx">Legitimate banking changes go through official documented processes — not email attachments. This PDF contained fraudulent bank details and a malicious payload.</div></div><div class="fp-rule rr"><strong>The principle</strong>Any request to change financial details needs verification through a channel you already control.</div>`}
+    },
+    decisionQ:"The email asks Sarah to update supplier bank details before 4 PM. What's the most dangerous element?",
+    decisionOpts:[
+      {text:'The sending domain is slightly different from the real one',fb:"This is the one thing that definitively proves it's fake — and the hardest to notice in a busy inbox. A single inserted word in a domain means anyone can impersonate any contact. Once Sarah acts on it, fraudulent account details are in the system."},
+      {text:'The 4 PM deadline is designed to prevent verification',fb:"The cutoff is the attack's most effective element. It's not a real deadline — it was invented to make calling Michael feel like it would cause a problem. Every unexpected financial email with an urgent deadline should trigger verification, not urgency."},
+      {text:'It appears to come from someone Sarah already trusts',fb:"Trust is the attack's foundation. This is why familiar names in unusual requests are more dangerous than unknown senders: the instinct to verify is suppressed before it even forms."},
+      {text:'The PDF may contain malicious code as well as fake bank details',fb:'Opening the PDF creates two risks simultaneously: fraudulent bank details may be entered into the system, and the file may execute malicious code. Together they can trigger a breach that runs for weeks.'}
+    ],
+    timelineGood:[['3:52 PM',"Called the supplier on an existing number. They'd sent nothing."],['4:05 PM','Reported to IT. Domain blocked, vendor alerted.']],
+    timelineBadResult:'£94,000 transferred. Weekend breach. Monday: full incident response.',
+    timelineGoodResult:'Resolved in under 15 minutes. Cost: £0.',
+    rulesHeadline:'The attack took five minutes. The investigation took four months. The difference was one verification step.',
+    doneTitle:"You followed Sarah's story from the email to the outcome."
+  },
+  hr:{
+    label:'HR / People',icon:'👥',
+    protagonist:{name:'James Okafor',role:'HR Business Partner',company:'Meridian Group',pronoun:'he',emoji:'👨‍💼',relationship:"IT contact he'd dealt with regularly",loss:'salary and contract data for 340 employees exfiltrated'},
+    sender:{initials:'PM',name:'Priya Mehta (IT)',addrDisplay:'priya.mehta@meridian-helpdesk.net',fakeDomain:'meridian-helpdesk.net',realDomain:'meridiangroup.com',time:'Fri 4:12 PM',chromebar:'mail.meridiangroup.com / inbox'},
+    emailSubject:'Urgent: Employee data export needed for audit — deadline today',
+    emailBody:`<p>Hi James,</p><p style="margin-top:10px">Apologies for the short notice — the external auditors have requested a full export of current employee salary data and contract types as part of this quarter's compliance review. I need this by 5 PM today or we risk a finding.</p><p style="margin-top:10px">Could you export from the HR system and upload to the secure folder linked below?</p><p style="margin-top:10px">We need to avoid a compliance breach — the audit window closes tonight.</p><p style="margin-top:10px">Thanks,<br>Priya</p>`,
+    emailBodyAnnotated:`<p>Hi James,</p><p style="margin-top:10px">Apologies for the short notice — the external auditors have requested a full export of current employee salary data and contract types as part of this quarter's compliance review. I need this by 5 PM today or we risk a finding.</p><p style="margin-top:10px">Could you export from the HR system and upload to the secure folder linked below?</p><p style="margin-top:10px"><span class="suspicious" id="hs-urgency" onclick="ck('urgency',event)">We need to avoid a compliance breach — the audit window closes tonight.</span><span class="hm" id="hm-urgency" onclick="ck('urgency',event)">!</span></p><p style="margin-top:10px">Thanks,<br>Priya</p>`,
+    fqContext:"You're the HR Business Partner. The sender appears to be a colleague from IT you've worked with before.",
+    fqOpts:[
+      {text:"Export the data and upload it — compliance deadlines can't be missed",correct:false,type:'bad',feedback:'This is what happened. The "secure folder" was attacker-controlled. Salary data for 340 employees was exfiltrated within minutes of upload.'},
+      {text:"Reply to the email asking Priya for the official audit reference",correct:false,type:'warn',feedback:"Replying uses the attacker's channel. They'll provide a convincing reference number. Verification needs to happen through a contact you already have."},
+      {text:"Verify with the sender — use a number or address you already have, not anything from the email",correct:true,type:'good',feedback:"Correct. Verification through a channel you already control is the one response that works regardless of how convincing the email looks."},
+      {text:"Email your own manager to check whether the audit request is real",correct:false,type:'warn',feedback:"Your manager likely doesn't know about a fabricated audit either. The verification step is a direct call or message to the person who sent the email — through your existing contact details."}
+    ],
+    verdict:{facts:[['Years in role','3 years'],['Knew the sender','Regular contact'],['Data exposed','340 employees'],['Detected','72 hours later']]},
+    maskHelperDesc:"The email creates professional obligation — refusing would mean 'risking a compliance finding.' It frames the request as protecting the organisation rather than exposing it.",
+    maskHelperEx:'"I need this by 5 PM or we risk a finding."',
+    maskGhostDesc:'"Audit window closes tonight" was invented. Its purpose was to prevent James from checking whether the audit was real.',
+    maskGhostEx:'"We need to avoid a compliance breach — the audit window closes tonight."',
+    hotspots:{
+      domain:{t:'🚨 Fake domain',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-r">🔍</div><div class="fpf-ti">Wrong domain for this company</div></div><div class="fpf-tx">The address says <strong>meridian-helpdesk.net</strong> — that's not Meridian Group's domain. The attacker registered a plausible-sounding IT helpdesk subdomain to impersonate an internal colleague.</div><div class="fpf-code">FAKE: meridian-helpdesk.net\nREAL: meridiangroup.com</div></div><div class="fp-rule rb"><strong>How to check</strong>Internal colleagues should always email from the company domain.</div>`},
+      timing:{t:'⚠ End-of-day timing',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⏰</div><div class="fpf-ti">Friday 4:12 PM — calculated</div></div><div class="fpf-tx">Late Friday afternoon means colleagues are leaving, managers are unavailable, and there's less time to verify. The attacker chose this window deliberately.</div></div><div class="fp-rule ro"><strong>Counter-move</strong>End-of-day Friday urgency is a pattern. That alone should trigger verification.</div>`},
+      urgency:{t:'⚠ Compliance pressure',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⚡</div><div class="fpf-ti">Fabricated compliance deadline</div></div><div class="fpf-tx">There was no audit. The "compliance finding" framing was designed to make refusal feel professionally dangerous. Authority + urgency + plausibility.</div></div><div class="fp-rule ro"><strong>Name it</strong>Real compliance requests go through documented processes — not urgent Friday afternoon emails.</div>`},
+      attachment:{t:'⚠ Unverified link',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">🔗</div><div class="fpf-ti">External link — destination unknown</div></div><div class="fpf-tx">The "secure folder" link points to an attacker-controlled site designed to harvest the uploaded data.</div></div><div class="fp-rule rr"><strong>The principle</strong>Any request to export sensitive data needs verification through a channel you already control.</div>`}
+    },
+    decisionQ:"The email asks James to export employee salary data for a compliance audit. What's the most dangerous element?",
+    decisionOpts:[
+      {text:"Data exfiltration is irreversible — unlike a financial transfer, it can't be recalled",fb:"Once salary and contract data for 340 employees is uploaded to an attacker-controlled folder, it can be sold or used for targeted fraud within minutes. A bank transfer sometimes has a reversal window. Exfiltrated data does not."},
+      {text:"The compliance deadline makes refusal feel professionally risky",fb:"The 'audit finding' framing makes caution feel like the dangerous choice. James isn't being asked to do something unusual — he's being told that not doing it will cause a problem for the organisation."},
+      {text:"The sender appears to be an internal colleague, not an unknown external party",fb:"Internal impersonation is harder to defend against than external phishing. James has dealt with Priya before. The instinct that 'this is an internal request' suppresses the scrutiny he'd apply to a stranger."},
+      {text:"The upload link points to an external destination that can't be verified",fb:"The link bypasses every internal data control at once. Even clicking 'just to check where it goes' can load a credential harvester or tracking script."}
+    ],
+    timelineGood:[['4:14 PM',"Called Priya on her internal extension. She'd sent nothing."],['4:20 PM','Reported to IT security. Link disabled before upload.']],
+    timelineBadResult:'Employee data for 340 people sold on a broker site. Regulatory investigation opened.',
+    timelineGoodResult:'Contained in under 10 minutes. No data left the building.',
+    rulesHeadline:'The export took two minutes. The regulatory investigation took six months.',
+    doneTitle:"You followed James's story from the email to the data breach."
+  },
+  it:{
+    label:'IT / Technical',icon:'💻',
+    protagonist:{name:'Ravi Patel',role:'Systems Administrator',company:'Clearway Services',pronoun:'he',emoji:'👨‍💻',relationship:'CTO he reported to directly',loss:'production environment credentials compromised — two-week breach'},
+    sender:{initials:'LA',name:'Lisa Andersen (CTO)',addrDisplay:'l.andersen@clearway-services.co.uk',fakeDomain:'clearway-services.co.uk',realDomain:'clearwayservices.co.uk',time:'Mon 9:03 AM',chromebar:'mail.clearwayservices.co.uk / inbox'},
+    emailSubject:'URGENT — production credentials needed for emergency recovery',
+    emailBody:`<p>Ravi,</p><p style="margin-top:10px">We have a critical outage affecting a key client. The on-call team needs temporary admin credentials for the production environment to run an emergency patch.</p><p style="margin-top:10px">I'm in a board meeting and can't call. Every minute of downtime is costing us. Please send the credentials via the secure form immediately.</p><p style="margin-top:10px">Lisa</p>`,
+    emailBodyAnnotated:`<p>Ravi,</p><p style="margin-top:10px">We have a critical outage affecting a key client. The on-call team needs temporary admin credentials for the production environment to run an emergency patch.</p><p style="margin-top:10px"><span class="suspicious" id="hs-urgency" onclick="ck('urgency',event)">I'm in a board meeting and can't call. Every minute of downtime is costing us. Please send the credentials via the secure form immediately.</span><span class="hm" id="hm-urgency" onclick="ck('urgency',event)">!</span></p><p style="margin-top:10px">Lisa</p>`,
+    fqContext:"You're the systems administrator. The email appears to be from your CTO, who you report to directly.",
+    fqOpts:[
+      {text:"Submit the credentials — a live client outage takes priority over process",correct:false,type:'bad',feedback:'This is what happened. The form was a credential harvester. Credentials shared this way gave the attacker persistent access for 14 days.'},
+      {text:"Reply to the email and ask for the incident ticket number first",correct:false,type:'warn',feedback:"Replying uses the attacker's channel. The rule for credentials is absolute: they are never shared via email, regardless of the apparent sender or urgency."},
+      {text:"Verify with the sender — use a number or address you already have, not anything from the email",correct:true,type:'good',feedback:"Correct. Verification through a channel you already control is the one response that works regardless of how convincing the email looks."},
+      {text:"Check the monitoring dashboards to see if an outage is actually happening",correct:false,type:'warn',feedback:"Checking dashboards is a good instinct — but it doesn't verify the request is legitimate. Credentials should never be shared via email even if an outage exists."}
+    ],
+    verdict:{facts:[['Years in role','5 years'],['Reported to sender','Directly'],['Breach duration','14 days'],['Detected','Routine audit']]},
+    maskHelperDesc:"The email exploits authority (CTO) and the fact that refusing a direct manager's emergency request feels career-threatening. \"I'm in a board meeting\" pre-empts the natural response of calling to verify.",
+    maskHelperEx:'"I\'m in a board meeting and can\'t call."',
+    maskGhostDesc:'"Every minute of downtime is costing us" — there was no outage. The urgency was manufactured to bypass Ravi\'s normal security instincts.',
+    maskGhostEx:'"Every minute of downtime is costing us. Please send immediately."',
+    hotspots:{
+      domain:{t:'🚨 One character different',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-r">🔍</div><div class="fpf-ti">Single hyphen inserted</div></div><div class="fpf-tx">The sending domain is <strong>clearway-services.co.uk</strong>. The real domain is <strong>clearwayservices.co.uk</strong> — no hyphen. The attacker registered the hyphenated variant knowing it would look identical at a glance.</div><div class="fpf-code">FAKE: clearway-services.co.uk\nREAL: clearwayservices.co.uk</div></div><div class="fp-rule rb"><strong>How to check</strong>Check the domain character by character, especially for hyphens or extra words.</div>`},
+      timing:{t:'⚠ Start-of-week timing',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⏰</div><div class="fpf-ti">Monday 9:03 AM — when defences are down</div></div><div class="fpf-tx">Monday mornings are high-volume and high-stress — inboxes are full and there's a natural desire to handle things quickly. The attacker chose this window deliberately.</div></div><div class="fp-rule ro"><strong>Counter-move</strong>High-stress moments are when these attacks are most effective. Slow down when you feel pressure to move fast.</div>`},
+      urgency:{t:'⚠ Manufactured crisis',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⚡</div><div class="fpf-ti">No outage. No client. No emergency.</div></div><div class="fpf-tx">The crisis was fabricated. "Every minute is costing us" was designed to bypass security instincts by framing caution as causing damage. Credentials should never be shared via email regardless of the stated emergency.</div></div><div class="fp-rule ro"><strong>The rule</strong>Credentials are never shared via email. Ever.</div>`},
+      attachment:{t:'🚨 Credential harvesting form',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-r">📎</div><div class="fpf-ti">The "secure form" is the attack</div></div><div class="fpf-tx">The HTML form attachment was a credential harvester — anything entered was sent directly to the attacker. The word "secure" in the filename is a social engineering technique, not a description.</div></div><div class="fp-rule rr"><strong>The principle</strong>Credentials are never shared via forms in emails. Verify the request through a channel you already control.</div>`}
+    },
+    decisionQ:"The email asks Ravi to share production credentials for an emergency recovery. What's the most dangerous element?",
+    decisionOpts:[
+      {text:'Sharing credentials via email bypasses every access control and audit log',fb:"Credentials shared outside your normal process sit outside every rotation policy, revocation process, and access log your organisation has. The attacker gets persistent access that looks legitimate and triggers no alerts."},
+      {text:"'I'm in a board meeting' is designed to pre-empt the natural verification step",fb:"The most dangerous line in this email isn't the request — it's 'I'm in a board meeting and can't call.' It specifically anticipates and disables Ravi's instinct to verify. The attacker removed the verification step before Ravi even thought of it."},
+      {text:'Authority from a direct manager makes non-compliance feel career-threatening',fb:"When the apparent sender is your line manager, the social cost of not complying feels real and immediate. Attackers research reporting structures specifically to use the highest-authority impersonation the target will believe."},
+      {text:'The credential form could execute malicious code even without being completed',fb:"The HTML form is a double threat. Entering credentials sends them to the attacker. But opening the file without entering anything may still execute scripts or fingerprint the browser. There's no safe way to 'just look at it'."}
+    ],
+    timelineGood:[['9:05 AM',"Checked the domain — one character off. Called Lisa's mobile."],['9:10 AM','No outage existed. Incident reported. Domain blocked.']],
+    timelineBadResult:'14-day breach. Client data exfiltrated. Backdoor installed. Regulatory notification required.',
+    timelineGoodResult:'Attack stopped at the first step. No credentials shared.',
+    rulesHeadline:'The credentials took 30 seconds to submit. The breach took four months to fully remediate.',
+    doneTitle:"You followed Ravi's story from the email to the two-week breach."
+  },
+  ops:{
+    label:'Operations / Admin',icon:'📋',
+    protagonist:{name:'Claire Dubois',role:'Office Manager',company:'Vantage Consulting',pronoun:'she',emoji:'👩‍💼',relationship:'Managing Director she supported directly',loss:'£1,500 in gift card codes sent to an attacker'},
+    sender:{initials:'TF',name:'Tom Fletcher (MD)',addrDisplay:'t.fletcher@vantage-consulting.co.uk',fakeDomain:'vantage-consulting.co.uk',realDomain:'vantageconsulting.co.uk',time:'Wed 2:31 PM',chromebar:'mail.vantageconsulting.co.uk / inbox'},
+    emailSubject:'Confidential — gift cards needed urgently for client',
+    emailBody:`<p>Claire,</p><p style="margin-top:10px">I'm in back-to-back meetings and can't speak. I need you to purchase £1,500 in Amazon gift cards for an urgent client appreciation situation. Buy from petty cash and send me the redemption codes by 3 PM.</p><p style="margin-top:10px">Please keep this between us for now — it's a sensitive deal and I don't want it getting out before it's confirmed.</p><p style="margin-top:10px">Tom</p>`,
+    emailBodyAnnotated:`<p>Claire,</p><p style="margin-top:10px">I'm in back-to-back meetings and can't speak. I need you to purchase £1,500 in Amazon gift cards for an urgent client appreciation situation. Buy from petty cash and send me the redemption codes by 3 PM.</p><p style="margin-top:10px"><span class="suspicious" id="hs-urgency" onclick="ck('urgency',event)">Please keep this between us for now — it's a sensitive deal and I don't want it getting out before it's confirmed.</span><span class="hm" id="hm-urgency" onclick="ck('urgency',event)">!</span></p><p style="margin-top:10px">Tom</p>`,
+    fqContext:"You're the office manager. The email appears to be from your Managing Director, who you support directly.",
+    fqOpts:[
+      {text:"Buy the gift cards and send the codes — Tom's requests usually need quick action",correct:false,type:'bad',feedback:'This is what happened. Gift card redemption codes are irreversible once sent. The attacker redeemed them within minutes.'},
+      {text:"Reply to the email asking Tom for a purchase order number",correct:false,type:'warn',feedback:"Replying uses the attacker's channel. The \"keep this between us\" instruction was specifically designed to prevent you from verifying through any other route."},
+      {text:"Verify with the sender — use a number or address you already have, not anything from the email",correct:true,type:'good',feedback:"Correct. Verification through a channel you already control is the one response that works regardless of how convincing the email looks."},
+      {text:"Buy the cards but wait for a direct call before sending the codes",correct:false,type:'warn',feedback:"Closer — but purchasing first still exposes petty cash. And the attacker won't call. Verify before taking any action."}
+    ],
+    verdict:{facts:[['Years in role','2 years'],['Supported the MD','Directly'],['Amount lost','£1,500'],['Discovered','Same day, too late']]},
+    maskHelperDesc:'"Keep this between us" is designed to prevent Claire from doing the one thing that would expose the fraud: asking anyone else. Isolation is a classic social engineering technique.',
+    maskHelperEx:'"Please keep this between us for now."',
+    maskGhostDesc:'"By 3 PM" creates just enough pressure to act before thinking. Combined with the secrecy request, it\'s designed to compress the time available to verify.',
+    maskGhostEx:'"Send me the redemption codes by 3 PM."',
+    hotspots:{
+      domain:{t:'🚨 Hyphen in the domain',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-r">🔍</div><div class="fpf-ti">Hyphenated lookalike domain</div></div><div class="fpf-tx">The sending domain is <strong>vantage-consulting.co.uk</strong>. The real domain is <strong>vantageconsulting.co.uk</strong> — no hyphen. One character difference that's easy to miss at a glance.</div><div class="fpf-code">FAKE: vantage-consulting.co.uk\nREAL: vantageconsulting.co.uk</div></div><div class="fp-rule rb"><strong>How to check</strong>Check the full domain, not just the display name. Hyphens inserted into company names are one of the most common spoofing techniques.</div>`},
+      timing:{t:'⚠ Mid-afternoon timing',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⏰</div><div class="fpf-ti">Wednesday 2:31 PM — half-hour window</div></div><div class="fpf-tx">The "by 3 PM" deadline gives 29 minutes — enough to act, not enough to think carefully. The attacker researched when the MD typically had meetings.</div></div><div class="fp-rule ro"><strong>Counter-move</strong>A 29-minute window is always long enough for a two-line internal message to verify a request.</div>`},
+      urgency:{t:'⚠ Secrecy + urgency combined',h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">⚡</div><div class="fpf-ti">Isolation is the attack</div></div><div class="fpf-tx">"Keep this between us" is designed to prevent Claire from doing the one thing that would expose the fraud: asking anyone else. Authority + urgency + isolation is a classic combination.</div></div><div class="fp-rule ro"><strong>Name it</strong>Any request that asks you to keep something secret from colleagues is a red flag regardless of who it appears to come from.</div>`},
+      attachment:{t:"⚠ No attachment — that's notable",h:`<div class="fpf v"><div class="fpf-hdr"><div class="fpf-ic ic-o">💡</div><div class="fpf-ti">Gift card fraud needs no attachment</div></div><div class="fpf-tx">This attack works without any link or attachment. Once the codes are sent by email reply, the attacker redeems them immediately — irreversibly. The simplicity makes it harder to detect through technical controls.</div></div><div class="fp-rule ro"><strong>The principle</strong>The simpler and more direct the request, the less there is to technically flag. Human verification is the only reliable defence here.</div>`}
+    },
+    decisionQ:"The email asks Claire to buy gift cards and send the redemption codes to the MD. What's the most dangerous element?",
+    decisionOpts:[
+      {text:"Gift card redemption codes are irreversible the moment they're sent",fb:"This attack works because the damage cannot be undone. A bank transfer has a possible recall window. Gift card codes don't. The attacker redeemed them within three minutes of receiving Claire's reply."},
+      {text:"'Keep this between us' removes the one safety step that would have stopped it",fb:"'Keep this between us' disables the natural safety mechanism. Claire's instinct to check with a colleague or the MD's PA is exactly what would have stopped this. The attacker removed it deliberately."},
+      {text:"The request fits within the kind of task Claire legitimately handles",fb:"Office managers do occasionally handle urgent purchases for senior leadership. This attack is effective because it's plausible within Claire's normal role. Anything that fits someone's expected duties gets less scrutiny."},
+      {text:"The sender domain has a single extra character that's easy to miss under pressure",fb:"The hyphenated domain is the technical proof of fraud — but it's the hardest thing to notice when a deadline is creating pressure. The domain check is the defence. The urgency is specifically designed to prevent it."}
+    ],
+    timelineGood:[['2:33 PM','Sent Tom a message on internal chat to verify. No reply.'],['2:35 PM',"Called the MD's PA. Tom was in meetings — he'd sent nothing."]],
+    timelineBadResult:'Gift card codes sent and redeemed in minutes. Irreversible.',
+    timelineGoodResult:'Attack stopped before any purchase. No money lost.',
+    rulesHeadline:'The codes were redeemed in under three minutes. The only window to stop it was before they were sent.',
+    doneTitle:"You followed Claire's story from the email to the gift card fraud."
+  }
+};
+
+let currentRole=null, hsSet=new Set(), currentStep=0;
+
+function pickRole(id){
+  currentRole=id;
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('role-'+id).classList.add('selected');
+  document.getElementById('roleNext').removeAttribute('disabled');
+  const r=ROLES[id];
+  const pill=document.getElementById('rolePill');
+  pill.textContent=r.icon+' '+r.label; pill.classList.add('show');
+  populateRole(id);
+}
+
+function populateRole(id){
+  const r=ROLES[id], p=r.protagonist, s=r.sender;
+  document.getElementById('emailTimeTag').textContent=s.time;
+  document.getElementById('emailChromebar').textContent=s.chromebar;
+  document.getElementById('emailAvatar').textContent=s.initials;
+  document.getElementById('emailSenderName').textContent=s.name;
+  document.getElementById('emailSenderAddr').textContent=s.addrDisplay;
+  document.getElementById('emailTime').textContent=s.time;
+  document.getElementById('emailTo').textContent='To: '+p.name.split(' ')[0].toLowerCase()+'@'+s.realDomain;
+  document.getElementById('emailSubject').textContent=r.emailSubject;
+  document.getElementById('emailBody').innerHTML=r.emailBody;
+  document.getElementById('fqQuestion').textContent=r.fqContext+' What do you do?';
+  const fqEl=document.getElementById('fqOpts'); fqEl.innerHTML='';
+  document.getElementById('fqRes').className='fq-result';
+  document.getElementById('fqNext').setAttribute('disabled','');
+  const ci=r.fqOpts.findIndex(o=>o.correct);
+  r.fqOpts.forEach((o,i)=>{
+    const b=document.createElement('button'); b.className='fq-btn'; b.textContent=o.text;
+    b.onclick=()=>answerFQ(i,o.correct,o.type,o.feedback,ci); fqEl.appendChild(b);
+  });
+  document.getElementById('protAvatar').textContent=p.emoji;
+  document.getElementById('protName').textContent=p.name;
+  document.getElementById('protRole').textContent=p.role;
+  document.getElementById('protCompany').textContent=p.company;
+  document.getElementById('protTitle').textContent='That email was sent to '+p.name+'. '+(p.pronoun==='she'?"She's":"He's")+' experienced, careful, and has worked with the '+p.relationship+'.';
+  document.getElementById('protBody').textContent=p.name.split(' ')[0]+' did what the email asked. The result: '+p.loss+'.';
+  document.getElementById('protFacts').innerHTML=r.verdict.facts.map(([l,v])=>`<div class="pf"><div class="pf-l">${l}</div><div class="pf-v" ${(l.toLowerCase().includes('lost')||l.toLowerCase().includes('exposed')||l.toLowerCase().includes('duration'))?'style="color:var(--red)"':''}>${v}</div></div>`).join('');
+  document.getElementById('vRes').className='v-result';
+  document.getElementById('verdictNext').setAttribute('disabled','');
+  document.getElementById('insideChromebar').textContent=s.chromebar;
+  document.getElementById('insideAvatar').textContent=s.initials;
+  document.getElementById('insideSenderName').textContent=s.name;
+  document.getElementById('hs-domain').textContent=s.addrDisplay.split('@')[1]||s.fakeDomain;
+  document.getElementById('insideTimeText').textContent=s.time;
+  document.getElementById('insideTo').textContent='To: '+p.name.split(' ')[0].toLowerCase()+'@'+s.realDomain;
+  document.getElementById('insideSubject').textContent=r.emailSubject;
+  document.getElementById('insideBody').innerHTML=r.emailBodyAnnotated;
+  document.getElementById('ckCount').textContent='Click the markers to investigate';
+  document.getElementById('foundBanner').classList.remove('show');
+  hsSet=new Set();
+  ['domain','timing','urgency','attachment'].forEach(hsId=>{
+    const m=document.getElementById('hm-'+hsId); if(m){m.textContent='!';m.classList.remove('ck');}
+    const h=document.getElementById('hs-'+hsId); if(h) h.classList.remove('ck');
+  });
+  document.getElementById('maskHelpfulDesc').textContent=r.maskHelperDesc;
+  document.getElementById('maskHelpfulEx').textContent=r.maskHelperEx;
+  document.getElementById('maskGhostDesc').textContent=r.maskGhostDesc;
+  document.getElementById('maskGhostEx').textContent=r.maskGhostEx;
+  ['helpful','ghost','gossip'].forEach(m=>document.getElementById('mask-'+m).classList.remove('rev'));
+  document.getElementById('decisionQ').textContent=r.decisionQ;
+  const dEl=document.getElementById('dChoices'); dEl.innerHTML='';
+  document.getElementById('dFb').className='ch-fb';
+  document.getElementById('decisionNext').setAttribute('disabled','');
+  r.decisionOpts.forEach((o,i)=>{
+    const b=document.createElement('button'); b.className='choice';
+    b.innerHTML=`<div class="ch-lt">${['A','B','C','D'][i]}</div><div class="ch-tx">${o.text}</div>`;
+    b.onclick=()=>answerD(i,o.fb); dEl.appendChild(b);
+  });
+  document.getElementById('rulesHeadline').textContent=r.rulesHeadline;
+  buildTimeline(r);
+  document.getElementById('doneTitle').textContent=r.doneTitle;
+}
+
+function buildTimeline(r){
+  const el=document.getElementById('rulesTimeline');
+  const gr=r.timelineGood.map(([t,e])=>{
+    const d=e.indexOf('.');
+    const s=d>-1?e.substring(0,d+1):e, x=d>-1&&e.length>d+2?' '+e.substring(d+2):'';
+    return `<div class="tl-rw"><div class="tl-dt good"></div><div class="tl-tm good">${t}</div><div class="tl-ev"><strong>${s}</strong>${x}</div></div>`;
+  }).join('');
+  el.innerHTML=`<div class="tl-col"><div class="tl-hd good">✓ If they had verified first</div><div class="tl-bd">${gr}<div class="tl-res good" style="margin-top:4px">${r.timelineGoodResult}</div></div></div><div class="tl-col"><div class="tl-hd bad">✗ What actually happened</div><div class="tl-bd"><div class="tl-rw"><div class="tl-dt bad"></div><div class="tl-tm bad">—</div><div class="tl-ev"><strong>Request acted on.</strong> No verification step taken.</div></div><div class="tl-rw"><div class="tl-dt bad"></div><div class="tl-tm bad">Hours later</div><div class="tl-ev"><strong>Something felt wrong.</strong> By then it was too late to reverse.</div></div><div class="tl-res bad" style="margin-top:4px">${r.timelineBadResult}</div></div></div>`;
+}
+
+function answerFQ(idx,correct,type,feedback,ci){
+  const btns=document.querySelectorAll('.fq-btn');
+  btns.forEach(b=>{b.onclick=null;b.style.cursor='default';});
+  btns[idx].classList.add(correct?'sel-right':'sel-wrong');
+  if(!correct&&ci>=0&&btns[ci]) btns[ci].classList.add('rev-right');
+  const el=document.getElementById('fqRes'); el.className='fq-result show '+type; el.textContent=feedback;
+  document.getElementById('fqNext').removeAttribute('disabled');
+}
+
+function answerV(v){
+  const txt={
+    yes:"It's more complicated. This type of attack is specifically designed to look legitimate and feel urgent. The real failure wasn't awareness — it was the absence of a rule that fires automatically regardless of how convincing the email looks.",
+    maybe:"Exactly. The real failure wasn't awareness — it was the absence of a rule that fires automatically regardless of how convincing the email looks.",
+    no:"Agreed. These attacks are built to bypass good judgment. The defence isn't sharper instincts — it's a rule that applies before judgment even enters the picture."
+  };
+  document.getElementById('vRes').className='v-result show';
+  document.getElementById('vRes').textContent=txt[v];
+  document.getElementById('verdictNext').removeAttribute('disabled');
+}
+
+function answerD(idx,feedback){
+  document.querySelectorAll('#dChoices .choice').forEach((x,i)=>{x.disabled=true;if(i===idx)x.classList.add('selected-d');});
+  const el=document.getElementById('dFb'); el.className='ch-fb show neutral';
+  el.innerHTML=`<div class="cf-lb-neutral">Why this matters</div><div>${feedback}</div>`;
+  document.getElementById('decisionNext').removeAttribute('disabled');
+}
+
+function ck(id,e){
+  e&&e.stopPropagation();
+  const r=ROLES[currentRole]; if(!r) return;
+  const hs=r.hotspots[id]; if(!hs) return;
+  if(!hsSet.has(id)){
+    hsSet.add(id);
+    const m=document.getElementById('hm-'+id); if(m){m.textContent='✓';m.classList.add('ck');}
+    const h=document.getElementById('hs-'+id); if(h) h.classList.add('ck');
+    const tot=Object.keys(r.hotspots).length;
+    document.getElementById('ckCount').textContent=hsSet.size===tot?'All found.':hsSet.size+' found — keep going';
+    if(hsSet.size>=tot) document.getElementById('foundBanner').classList.add('show');
+  }
+  document.getElementById('fpT').textContent=hs.t;
+  // Reset animation state before injecting new content
+  document.getElementById('fpB').innerHTML='';
+  requestAnimationFrame(()=>{
+    document.getElementById('fpB').innerHTML=hs.h;
+    document.getElementById('fp').classList.add('open');
+    document.getElementById('fpBackdrop').classList.add('show');
+    setTimeout(()=>document.querySelectorAll('.fpf').forEach((el,i)=>setTimeout(()=>el.classList.add('v'),i*60)),20);
+  });
+}
+
+function closeP(){
+  const fp=document.getElementById('fp');
+  const bd=document.getElementById('fpBackdrop');
+  fp.classList.remove('open');
+  bd.classList.remove('show');
+  void fp.offsetHeight; // force repaint so transition fires in all iframe contexts
+}
+
+// Close on backdrop click (explicit)
+document.getElementById('fpBackdrop').addEventListener('click', closeP);
+
+// Close on click outside panel
+document.addEventListener('click',e=>{
+  const fp=document.getElementById('fp');
+  if(!fp.classList.contains('open')) return; // panel already closed
+  if(
+    !e.target.closest('.fp') &&
+    !e.target.closest('.suspicious') &&
+    !e.target.closest('.hm') &&
+    !e.target.closest('.e-attach')
+  ) closeP();
+});
+
+function revMask(id){document.getElementById('mask-'+id).classList.add('rev');}
+
+function restart(){
+  currentRole=null; hsSet=new Set();
+  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('roleNext').setAttribute('disabled','');
+  document.getElementById('rolePill').classList.remove('show');
+  step(0);
+}
+
+function step(idx){
+  currentStep=idx;
+  // KEY FIX: close panel on every step change
+  closeP();
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s'+idx).classList.add('active');
+  const pct=idx===0?0:Math.round((idx/9)*100);
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pStripe').style.width=pct+'%';
+  document.getElementById('pLbl').textContent=(idx===0?'—':idx)+' / 10';
+  // KEY FIX: scroll to top of page (works inside iframe)
+  window.scrollTo({top:0,behavior:'smooth'});
+  document.documentElement.scrollTop=0;
+
+  // Feature: heartbeat speed
+  updateHeartbeat(idx);
+  // Feature: staggered reveal on situation screens
+  staggerReveal(idx);
+  // Feature: typing indicator on email screens
+  typingReveal(idx);
+  // Feature: pulse on important tags
+  pulseTag(idx);
+  // Feature: update history button visibility
+  updateHistoryVisibility();
+}
+
+/* ── FEATURE: HEARTBEAT ── */
+function updateHeartbeat(idx) {
+  const icon = document.getElementById('hbIcon');
+  const line = document.getElementById('hbLine');
+  if (!icon || !line) return;
+  // Steps 4-5 (protagonist reveal, annotated email) = medium tension
+  // Steps 7-8 (decision, timeline) = high tension
+  const hot = idx >= 7;
+  const med = idx >= 4 && idx < 7;
+  icon.classList.toggle('hot', hot);
+  line.classList.toggle('hot', hot);
+  line.style.setProperty('--hb-speed', hot ? '1.2s' : med ? '1.8s' : '2.4s');
+}
+
+/* ── FEATURE: STAGGERED REVEAL ── */
+function staggerReveal(idx) {
+  const screen = document.getElementById('s' + idx);
+  if (!screen) return;
+  // Apply to cards, paragraphs inside the active screen
+  const els = screen.querySelectorAll('.card, .welcome-hero, .how-card, .prot-card, .verdict-box, .fq-box, .masks, .rules-grid, .done-card, .tl');
+  els.forEach((el, i) => {
+    el.classList.add('stagger-el');
+    setTimeout(() => el.classList.add('revealed'), 100 + i * 250);
+  });
+}
+
+/* ── FEATURE: TYPING INDICATOR ON EMAIL ── */
+function typingReveal(idx) {
+  // Steps 2 (email read) and 5 (annotated email) show the email client
+  if (idx !== 2 && idx !== 5) return;
+  const screen = document.getElementById('s' + idx);
+  if (!screen) return;
+  const emailClient = screen.querySelector('.email-client');
+  if (!emailClient) return;
+
+  // Hide email body, show typing
+  const eBody = emailClient.querySelector('.e-body');
+  if (!eBody) return;
+  const origHtml = eBody.innerHTML;
+  eBody.innerHTML = '<div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+
+  setTimeout(() => {
+    eBody.innerHTML = origHtml;
+    eBody.classList.add('stagger-el');
+    requestAnimationFrame(() => eBody.classList.add('revealed'));
+  }, 1800);
+}
+
+/* ── FEATURE: PULSE ON TAGS ── */
+function pulseTag(idx) {
+  // Pulse red tags on danger screens
+  if (idx === 4 || idx === 5 || idx === 6) {
+    const screen = document.getElementById('s' + idx);
+    if (!screen) return;
+    const tags = screen.querySelectorAll('.tag-red, .tag-orange');
+    tags.forEach(t => {
+      t.classList.remove('pulse');
+      void t.offsetWidth; // force reflow to restart animation
+      t.classList.add('pulse');
+    });
+  }
+}
+
+/* ── FEATURE: CHOICES HISTORY ── */
+let choiceLog = [];
+
+// Override answerFQ to log
+const _origAnswerFQ = answerFQ;
+const _answerFQLogged = function(idx, correct, type, feedback, ci) {
+  _origAnswerFQ(idx, correct, type, feedback, ci);
+  const btns = document.querySelectorAll('.fq-btn');
+  if (btns[idx]) choiceLog.push({ step: 'First question', text: btns[idx].textContent });
+  updateHistoryVisibility();
+};
+// Monkey-patch: replace onclick handlers after populateRole runs
+const _origPopulateRole = populateRole;
+populateRole = function(id) {
+  _origPopulateRole(id);
+  const fqEl = document.getElementById('fqOpts');
+  const btns = fqEl.querySelectorAll('.fq-btn');
+  const r = ROLES[id];
+  const ci = r.fqOpts.findIndex(o => o.correct);
+  btns.forEach((b, i) => {
+    b.onclick = () => _answerFQLogged(i, r.fqOpts[i].correct, r.fqOpts[i].type, r.fqOpts[i].feedback, ci);
+  });
+  // Also patch decision buttons
+  const dEl = document.getElementById('dChoices');
+  const dBtns = dEl.querySelectorAll('.choice');
+  dBtns.forEach((b, i) => {
+    b.onclick = () => _answerDLogged(i, r.decisionOpts[i].fb);
+  });
+};
+
+const _origAnswerD = answerD;
+const _answerDLogged = function(idx, feedback) {
+  _origAnswerD(idx, feedback);
+  const btns = document.querySelectorAll('#dChoices .choice .ch-tx');
+  if (btns[idx]) choiceLog.push({ step: 'Decision', text: btns[idx].textContent });
+  updateHistoryVisibility();
+};
+
+const _origAnswerV = answerV;
+answerV = function(v) {
+  _origAnswerV(v);
+  const labels = { yes: 'Yes — they should have spotted it', maybe: "It's more complicated", no: "No — the system failed" };
+  choiceLog.push({ step: 'Verdict', text: labels[v] || v });
+  updateHistoryVisibility();
+};
+
+function updateHistoryVisibility() {
+  const btn = document.getElementById('historyBtn');
+  if (btn) btn.classList.toggle('show', choiceLog.length >= 1);
+}
+
+function toggleHistory() {
+  const panel = document.getElementById('historyPanel');
+  const isOpen = panel.classList.toggle('open');
+  if (isOpen) renderHistory();
+}
+
+function renderHistory() {
+  const panel = document.getElementById('historyPanel');
+  if (!panel || choiceLog.length === 0) return;
+  let html = '<div class="history-panel-title">Your choices so far</div>';
+  choiceLog.forEach((entry, i) => {
+    const truncated = entry.text.length > 80 ? entry.text.substring(0, 77) + '...' : entry.text;
+    html += '<div class="history-entry"><div class="history-step-label">' + entry.step + '</div><div class="history-choice-text">' + truncated + '</div></div>';
+  });
+  panel.innerHTML = html;
+}
+
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('historyPanel');
+  const btn = document.getElementById('historyBtn');
+  if (panel && panel.classList.contains('open') && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.classList.remove('open');
+  }
+});
+
+/* ── FULLSCREEN ── */
+function toggleFs() {
+  const doc = document.documentElement;
+  const fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (!fs) {
+    if (doc.requestFullscreen) doc.requestFullscreen();
+    else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+}
+function onFsChange() {
+  const fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  document.getElementById('fsExpand').style.display = fs ? 'none' : 'block';
+  document.getElementById('fsShrink').style.display = fs ? 'block' : 'none';
+}
+document.addEventListener('fullscreenchange', onFsChange);
+document.addEventListener('webkitfullscreenchange', onFsChange);
+
+const _origRestart = restart;
+restart = function() {
+  choiceLog = [];
+  updateHistoryVisibility();
+  document.getElementById('historyPanel').classList.remove('open');
+  _origRestart();
+};
+
+step(0);
+</script>
+</body>
+</html>
