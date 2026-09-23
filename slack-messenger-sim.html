@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Тренажёр: фишинг в мессенджере</title>
+<style>
+  :root{
+    --bg:#0e1521; --panel:#151d2b; --rail:#111826; --line:#26303f;
+    --ink:#e7ecf3; --dim:#8895a7; --dimmer:#5d6b7d;
+    --accent:#4d9fff; --accent-ink:#0a1220;
+    --good:#3ecf8e; --bad:#ff6b6b; --warn:#ffc04d;
+    --bubble:#1b2434; --ext:#3a2f1a; --ext-line:#6b5322;
+    --font: 'Segoe UI', Roboto, -apple-system, system-ui, sans-serif;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--font);
+    font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+
+  /* ---- intro ---- */
+  .intro{padding:48px 22px 40px;max-width:760px;margin:0 auto}
+  .kicker{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700;margin-bottom:14px}
+  .intro h1{font-size:30px;line-height:1.18;margin:0 0 16px;font-weight:700;letter-spacing:-.01em}
+  .intro p{color:var(--dim);margin:0 0 14px}
+  .intro .lead{color:var(--ink);font-size:16.5px}
+  .badges{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 28px}
+  .badge{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:13px;color:var(--dim)}
+  .badge b{color:var(--ink);font-weight:600}
+  .start{background:var(--accent);color:var(--accent-ink);border:0;border-radius:10px;padding:14px 26px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .start:hover{filter:brightness(1.08)}
+
+  /* ---- app shell ---- */
+  .app{display:none;flex:1;min-height:0}
+  .app.on{display:flex}
+  .topbar{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--line);background:var(--rail)}
+  .topbar .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,#4d9fff,#8b5cf6);flex:0 0 auto}
+  .topbar .wsname{font-weight:700;font-size:15px}
+  .topbar .prog{margin-left:auto;font-size:13px;color:var(--dim)}
+  .topbar .prog b{color:var(--ink)}
+  .score-pill{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:13px;color:var(--dim);margin-left:12px}
+  .score-pill b{color:var(--good)}
+
+  .cols{display:flex;flex:1;min-height:0}
+  .sidebar{width:250px;flex:0 0 250px;background:var(--rail);border-right:1px solid var(--line);padding:14px 8px;overflow-y:auto}
+  .side-h{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dimmer);padding:10px 12px 6px;font-weight:700}
+  .chan{display:flex;align-items:center;gap:9px;padding:8px 12px;border-radius:7px;cursor:pointer;color:var(--dim);font-size:14.5px;position:relative}
+  .chan:hover{background:#1a2331}
+  .chan.active{background:#22304a;color:#fff}
+  .chan .hash{color:var(--dimmer);font-weight:600}
+  .chan .av{width:22px;height:22px;border-radius:5px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0a1220}
+  .chan .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chan .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:auto;flex:0 0 auto}
+  .chan.done .dot{background:transparent;border:1px solid var(--dimmer)}
+  .chan .ext{font-size:9px;font-weight:800;letter-spacing:.04em;background:var(--warn);color:#3a2b00;border-radius:3px;padding:1px 4px;margin-left:auto}
+
+  .main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+  .conv-head{padding:13px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  .conv-head .t{font-weight:700;font-size:15.5px}
+  .conv-head .ext-tag{font-size:10px;font-weight:800;background:var(--warn);color:#3a2b00;border-radius:4px;padding:2px 6px;letter-spacing:.03em}
+  .conv-head .sub{color:var(--dimmer);font-size:12.5px;margin-left:2px}
+
+  .stream{flex:1;overflow-y:auto;padding:20px 22px 8px}
+  .empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--dimmer);text-align:center;gap:10px;padding:40px}
+  .empty svg{opacity:.5}
+
+  .msg{display:flex;gap:11px;margin-bottom:18px}
+  .msg .avatar{width:36px;height:36px;border-radius:8px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;color:#0a1220}
+  .msg .body{min-width:0}
+  .msg .row1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .msg .name{font-weight:700;font-size:14.5px}
+  .msg .ext-flag{font-size:9.5px;font-weight:800;background:var(--warn);color:#3a2b00;border-radius:3px;padding:1px 5px;letter-spacing:.03em}
+  .msg .time{font-size:11.5px;color:var(--dimmer)}
+  .msg .text{margin-top:3px;color:#dbe2ec}
+  .msg .text a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(77,159,255,.35)}
+  .msg .text .url-hint{display:block;font-size:11.5px;color:var(--dimmer);margin-top:2px;font-family:'Consolas',monospace}
+
+  /* link unfurl card */
+  .unfurl{margin-top:9px;border-left:3px solid var(--line);padding:9px 13px;background:#131b28;border-radius:0 7px 7px 0;max-width:440px}
+  .unfurl .u-site{font-size:11.5px;color:var(--dim);margin-bottom:2px}
+  .unfurl .u-title{font-weight:600;color:#cfe0ff;font-size:14px}
+  .unfurl .u-desc{font-size:12.5px;color:var(--dim);margin-top:2px}
+  .unfurl.ext-preview .u-hidden{font-size:12px;color:var(--dimmer)}
+
+  .attach{margin-top:9px;display:inline-flex;align-items:center;gap:9px;border:1px solid var(--line);background:#131b28;border-radius:8px;padding:9px 13px;max-width:340px}
+  .attach .ic{width:30px;height:30px;border-radius:6px;background:#26303f;display:flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 auto}
+  .attach .fn{font-size:13.5px;font-weight:600}
+  .attach .fmeta{font-size:11.5px;color:var(--dimmer)}
+
+  /* decision bar */
+  .decide{border-top:1px solid var(--line);padding:16px 22px;background:var(--panel)}
+  .decide .q{font-size:14px;color:var(--dim);margin-bottom:12px}
+  .decide .q b{color:var(--ink)}
+  .choices{display:flex;gap:12px;flex-wrap:wrap}
+  .choice{flex:1;min-width:180px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:13px 16px;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;display:flex;align-items:center;gap:10px;transition:border-color .12s,background .12s}
+  .choice:hover{border-color:var(--accent)}
+  .choice .ci{font-size:17px}
+  .choice.safe:hover{border-color:var(--good)}
+  .choice.phish:hover{border-color:var(--bad)}
+
+  /* verdict */
+  .verdict{margin-top:14px;border-radius:11px;padding:16px 18px;border:1px solid var(--line);animation:pop .2s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .verdict.correct{background:rgba(62,207,142,.09);border-color:rgba(62,207,142,.4)}
+  .verdict.wrong{background:rgba(255,107,107,.09);border-color:rgba(255,107,107,.4)}
+  .verdict .vh{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px;margin-bottom:9px}
+  .verdict.correct .vh{color:var(--good)}
+  .verdict.wrong .vh{color:var(--bad)}
+  .verdict .truth{font-size:13px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;margin-bottom:8px}
+  .verdict .truth.is-phish{color:var(--bad)}
+  .verdict .truth.is-safe{color:var(--good)}
+  .verdict p{margin:0 0 8px;color:#dbe2ec;font-size:14px}
+  .verdict .signals{margin:6px 0 0;padding:0;list-style:none}
+  .verdict .signals li{padding:4px 0 4px 22px;position:relative;font-size:13.5px;color:#cbd5e2}
+  .verdict .signals li:before{content:'';position:absolute;left:2px;top:10px;width:7px;height:7px;border-radius:50%;background:var(--warn)}
+  .verdict .next{margin-top:14px;background:var(--accent);color:var(--accent-ink);border:0;border-radius:9px;padding:11px 22px;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit}
+  .verdict .next:hover{filter:brightness(1.08)}
+
+  /* finish */
+  .finish{display:none;padding:52px 24px;max-width:640px;margin:0 auto;text-align:center}
+  .finish.on{display:block}
+  .finish .big{font-size:56px;font-weight:800;letter-spacing:-.02em}
+  .finish .big.hi{color:var(--good)} .finish .big.mid{color:var(--warn)} .finish .big.lo{color:var(--bad)}
+  .finish h2{font-size:24px;margin:6px 0 10px}
+  .finish .sum{color:var(--dim);margin-bottom:26px}
+  .recap{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 6px;margin-bottom:24px}
+  .recap .ri{display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .recap .ri:last-child{border-bottom:0}
+  .recap .rmark{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800}
+  .recap .rmark.ok{background:rgba(62,207,142,.15);color:var(--good)}
+  .recap .rmark.no{background:rgba(255,107,107,.15);color:var(--bad)}
+  .recap .rname{font-weight:600;font-size:14px}
+  .recap .rtag{margin-left:auto;font-size:11px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:3px 8px;border-radius:5px}
+  .recap .rtag.p{background:rgba(255,107,107,.14);color:var(--bad)}
+  .recap .rtag.s{background:rgba(62,207,142,.14);color:var(--good)}
+  .rules{text-align:left;margin-bottom:28px}
+  .rules h3{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:0 0 12px}
+  .rules li{color:#dbe2ec;margin-bottom:9px;font-size:14.5px}
+  .again{background:transparent;color:var(--accent);border:1.5px solid var(--accent);border-radius:9px;padding:12px 24px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px}
+  .again:hover{background:rgba(77,159,255,.1)}
+
+  @media(max-width:720px){
+    .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:20;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 40px rgba(0,0,0,.5)}
+    .sidebar.open{transform:none}
+    .menu-btn{display:inline-flex}
+    .intro h1{font-size:25px}
+  }
+  .menu-btn{display:none;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:7px;width:34px;height:34px;align-items:center;justify-content:center;cursor:pointer;font-size:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- INTRO -->
+  <section class="intro" id="intro">
+    <div class="kicker">Модуль · Симуляция</div>
+    <h1>Фишинг приходит не только в почту</h1>
+    <p class="lead">В мессенджере нет спам-фильтра, проверки домена и пометки «внешний отправитель», к которым мы привыкли в email. Сообщение приходит от «коллеги» в рабочем чате — и по умолчанию ему верят.</p>
+    <p>Перед вами рабочий мессенджер вымышленной компании. Пять переписок в списке слева. Откройте каждую, прочитайте — и решите: это обычное рабочее сообщение или попытка фишинга. После каждого ответа будет разбор.</p>
+    <div class="badges">
+      <div class="badge">🎯 Найти <b>2 фишинга</b> из 5</div>
+      <div class="badge">⏱ ~7 минут</div>
+      <div class="badge">🧩 Основано на реальных схемах 2025–2026</div>
+    </div>
+    <button class="start" onclick="startSim()">Открыть мессенджер →</button>
+  </section>
+
+  <!-- APP -->
+  <section class="app" id="app">
+    <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <div class="topbar">
+        <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+        <div class="logo"></div>
+        <div class="wsname">Nordwind Logistics</div>
+        <div class="prog">Разобрано: <b id="progCount">0</b>/5</div>
+        <div class="score-pill">Верно: <b id="scoreCount">0</b></div>
+      </div>
+      <div class="cols">
+        <aside class="sidebar" id="sidebar">
+          <div class="side-h">Каналы</div>
+          <div id="channelList"></div>
+          <div class="side-h">Личные сообщения</div>
+          <div id="dmList"></div>
+        </aside>
+        <div class="main">
+          <div class="conv-head" id="convHead" style="display:none"></div>
+          <div class="stream" id="stream">
+            <div class="empty" id="emptyState">
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <div>Выберите переписку слева, чтобы начать</div>
+            </div>
+          </div>
+          <div class="decide" id="decideBar" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINISH -->
+  <section class="finish" id="finish">
+    <div class="big" id="bigScore">0/5</div>
+    <h2 id="finishTitle"></h2>
+    <p class="sum" id="finishSum"></p>
+    <div class="recap" id="recap"></div>
+    <div class="rules">
+      <h3>Что забрать с собой</h3>
+      <ul>
+        <li><b>Просьба перелогиниться или ввести пароль по ссылке</b> — почти всегда фишинг, в каком бы канале она ни пришла.</li>
+        <li><b>Код 2FA, подтверждение пуша, удалённый доступ (Quick Assist, AnyDesk)</b> — настоящий IT об этом не просит. Никогда.</li>
+        <li><b>Значок «External» и незнакомый рабочий домен</b> — повод замедлиться, а не повод доверять.</li>
+        <li><b>Срочность + «никому не говори»</b> — связка, которая должна включать подозрение сама по себе.</li>
+        <li><b>Проверяйте через второй канал:</b> позвоните человеку, напишите в известный вам чат IT, откройте тикет-систему сами.</li>
+      </ul>
+    </div>
+    <button class="again" onclick="location.reload()">Пройти заново</button>
+  </section>
+
+</div>
+
+<script>
+/* ---------- data ---------- */
+const CONV = [
+  {
+    id:'c-ops', kind:'channel', name:'ops-склад', sub:'23 участника',
+    phish:false,
+    msgs:[
+      {from:'Марина Коваль', init:'МК', col:'#4d9fff', time:'09:12',
+       text:'коллеги, приёмка на складе B сегодня сдвигается на 14:00 — фура застряла на границе. кто ждал разгрузку в первой половине, перепланируйте пожалуйста'},
+      {from:'Дмитрий Реут', init:'ДР', col:'#3ecf8e', time:'09:15',
+       text:'принял, предупрежу водителей'}
+    ],
+    q:'Сообщение в рабочем канале о переносе приёмки.',
+    verdict:{
+      phish:false,
+      why:'Обычная рабочая координация. Ничего не просят: ни ссылок, ни данных, ни действий с доступом. Отправители — знакомые внутренние коллеги, разговор продолжается по-человечески.',
+      signals:[
+        'Нет ссылок, вложений и просьб что-либо ввести',
+        'Внутренние участники, без пометки External',
+        'Содержание совпадает с обычной работой канала'
+      ]
+    }
+  },
+  {
+    id:'c-it', kind:'dm', name:'IT Helpdesk', init:'IT', col:'#ffc04d', ext:true,
+    phish:true,
+    msgs:[
+      {from:'IT Helpdesk', init:'IT', col:'#ffc04d', time:'10:47', ext:true,
+       text:'Здравствуйте! Мы переносим вход в систему на новый SSO. Ваша учётная запись будет отключена сегодня до 18:00, если не подтвердить миграцию. Пройдите по ссылке и войдите под рабочим логином, чтобы сохранить доступ:',
+       link:{show:'портал-входа.nordwind', title:'Nordwind SSO · Подтверждение учётной записи', site:'nordwlnd-sso-verify.top', desc:'Единый вход · войдите, чтобы продолжить', realhint:'https://nordwlnd-sso-verify.top/login'}},
+      {from:'IT Helpdesk', init:'IT', col:'#ffc04d', time:'10:47', ext:true,
+       text:'Пожалуйста, не пересылайте это письмо другим — миграция идёт по индивидуальному графику.'}
+    ],
+    q:'«IT Helpdesk» просит перелогиниться из-за миграции SSO.',
+    verdict:{
+      phish:true,
+      why:'Классический фейковый хелпдеск. Настоящий IT не заставляет входить по ссылке из чата под угрозой отключения и не просит «никому не пересылать». Домен в превью подделан под ваш (nordwl\u200bnd вместо nordwind, зона .top), а превью ссылки в Slack можно подделать отдельно от настоящего адреса.',
+      signals:[
+        'Пометка External у «внутренней» IT-службы',
+        'Искусственная срочность: «отключим до 18:00»',
+        'Просьба войти под рабочим логином по ссылке',
+        'Домен-двойник: nordwlnd-sso-verify.top, не ваш настоящий',
+        '«Никому не пересылайте» — изоляция жертвы'
+      ]
+    }
+  },
+  {
+    id:'c-design', kind:'channel', name:'дизайн-макеты', sub:'8 участников',
+    phish:false,
+    msgs:[
+      {from:'Аня Соколова', init:'АС', col:'#8b5cf6', time:'11:30',
+       text:'закинула обновлённые макеты лендинга в наш общий диск, папка /2026/landing. посмотрите к обеду hero-блок — не уверена по контрасту кнопки',
+       unfurl:{site:'Общий диск компании', title:'2026 / landing / hero-v3', desc:'Папка · 12 файлов · изменена только что'}},
+      {from:'Костя Лебедь', init:'КЛ', col:'#3ecf8e', time:'11:41',
+       text:'глянул, кнопку бы притемнить на пару тонов. в остальном 🔥'}
+    ],
+    q:'Коллега делится макетами на общем диске.',
+    verdict:{
+      phish:false,
+      why:'Нормальный рабочий обмен. Ссылка ведёт на ваш собственный корпоративный диск, адрес совпадает с тем, чем вы пользуетесь каждый день, отправитель — знакомый внутренний коллега, и в ответ идёт живое обсуждение по делу.',
+      signals:[
+        'Ресурс — знакомый внутренний диск, а не внешний «файлообменник»',
+        'Никто не просит вводить пароль или логиниться заново',
+        'Оба участника внутренние, обсуждение по существу'
+      ]
+    }
+  },
+  {
+    id:'c-cfo', kind:'dm', name:'Ігор Петренко', init:'ІП', col:'#f87171', ext:true,
+    phish:true,
+    msgs:[
+      {from:'Ігор Петренко (CFO)', init:'ІП', col:'#f87171', time:'16:22', ext:true,
+       text:'Привет. Я сейчас на встрече с аудиторами, говорить не могу. Нужно срочно оплатить счёт подрядчику до конца дня, иначе сорвём поставку. Пришлю реквизиты — обработай напрямую, минуя обычное согласование, под мою ответственность.'},
+      {from:'Ігор Петренко (CFO)', init:'ІП', col:'#f87171', time:'16:23', ext:true,
+       text:'И давай пока между нами, не поднимай в общем канале финансов — не хочу лишнего шума перед аудитом.',
+       attach:{name:'invoice_urgent_4471.pdf', meta:'PDF · 78 КБ'}}
+    ],
+    q:'«Финансовый директор» просит срочно оплатить счёт в обход согласования.',
+    verdict:{
+      phish:true,
+      why:'Схема «мошенничество от имени руководителя» (BEC), перенесённая в личку. Обратите внимание на пометку External у собеседника: это не внутренний аккаунт CFO. В Slack внешний участник может задать любое отображаемое имя, а «хамелеон» и вовсе меняет личность в уже существующей переписке. Связка «срочно + в обход правил + никому не говори» — сам по себе сигнал.',
+      signals:[
+        'Пометка External у «вашего CFO»',
+        'Давление срочностью и авторитетом руководителя',
+        'Просьба обойти обычное согласование платежа',
+        '«Между нами, не поднимай в канале» — уход от контроля',
+        'Нельзя перепроверить голосом: «на встрече, говорить не могу»'
+      ]
+    }
+  },
+  {
+    id:'c-eng', kind:'channel', name:'общий', sub:'54 участника',
+    phish:false,
+    msgs:[
+      {from:'Олег (HR)', init:'ОХ', col:'#4d9fff', time:'13:05',
+       text:'напоминаю: в пятницу корпоратив-квиз в 17:00, кто идёт — отметьтесь 🎉 регистрация не нужна, просто приходите в переговорку «Балтика»'},
+      {from:'Света Мороз', init:'СМ', col:'#3ecf8e', time:'13:08', text:'мы командой придём 🙌'},
+      {from:'Павел Гринь', init:'ПГ', col:'#8b5cf6', time:'13:10', text:'+1, буду'}
+    ],
+    q:'HR анонсирует корпоративный квиз в общем канале.',
+    verdict:{
+      phish:false,
+      why:'Безобидный внутренний анонс. Ни ссылок, ни просьб ввести данные, ни срочности с угрозой. Несколько знакомых коллег отвечают в открытую — так фишинг не выглядит.',
+      signals:[
+        'Никаких ссылок, вложений и запросов данных',
+        'Только внутренние участники канала',
+        'Живая ветка ответов от разных коллег'
+      ]
+    }
+  }
+];
+
+/* ---------- state ---------- */
+let answered = {};       // id -> {chosePhish:bool, correct:bool}
+let currentId = null;
+const total = CONV.length;
+
+/* ---------- render sidebar ---------- */
+function renderSidebar(){
+  const ch = document.getElementById('channelList');
+  const dm = document.getElementById('dmList');
+  ch.innerHTML=''; dm.innerHTML='';
+  CONV.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='chan'+(c.id===currentId?' active':'')+(answered[c.id]?' done':'');
+    el.onclick=()=>openConv(c.id);
+    if(c.kind==='channel'){
+      el.innerHTML=`<span class="hash">#</span><span class="nm">${c.name}</span>`
+        + (answered[c.id]?'<span class="dot"></span>':'<span class="dot"></span>');
+    } else {
+      el.innerHTML=`<span class="av" style="background:${c.col}">${c.init}</span>`
+        +`<span class="nm">${c.name}</span>`
+        + (c.ext?'<span class="ext">EXT</span>':'<span class="dot"></span>');
+    }
+    (c.kind==='channel'?ch:dm).appendChild(el);
+  });
+}
+
+/* ---------- open a conversation ---------- */
+function openConv(id){
+  currentId=id;
+  const c=CONV.find(x=>x.id===id);
+  document.getElementById('emptyState')?.remove();
+  document.getElementById('sidebar').classList.remove('open');
+
+  const head=document.getElementById('convHead');
+  head.style.display='flex';
+  head.innerHTML = c.kind==='channel'
+    ? `<span class="t"># ${c.name}</span><span class="sub">${c.sub}</span>`
+    : `<span class="t">${c.name}</span>`+(c.ext?'<span class="ext-tag">EXTERNAL</span>':'')
+      + `<span class="sub">прямое сообщение</span>`;
+
+  const s=document.getElementById('stream');
+  s.innerHTML='';
+  c.msgs.forEach(m=>s.appendChild(renderMsg(m)));
+  s.scrollTop=0;
+
+  renderDecide(c);
+  renderSidebar();
+}
+
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderMsg(m){
+  const el=document.createElement('div');
+  el.className='msg';
+  let inner=`<div class="avatar" style="background:${m.col}">${m.init}</div><div class="body">`;
+  inner+=`<div class="row1"><span class="name">${esc(m.from)}</span>`
+       + (m.ext?'<span class="ext-flag">EXTERNAL</span>':'')
+       + `<span class="time">${m.time}</span></div>`;
+  inner+=`<div class="text">${esc(m.text)}`;
+  if(m.link){
+    inner+=` <a href="#" onclick="return false">${esc(m.link.show)}</a>`
+         + `<span class="url-hint">↳ ведёт на: ${esc(m.link.realhint)}</span>`;
+  }
+  inner+=`</div>`;
+  if(m.link){
+    inner+=`<div class="unfurl ext-preview"><div class="u-site">${esc(m.link.site)}</div>`
+         + `<div class="u-title">${esc(m.link.title)}</div>`
+         + `<div class="u-desc">${esc(m.link.desc)}</div></div>`;
+  }
+  if(m.unfurl){
+    inner+=`<div class="unfurl"><div class="u-site">${esc(m.unfurl.site)}</div>`
+         + `<div class="u-title">${esc(m.unfurl.title)}</div>`
+         + `<div class="u-desc">${esc(m.unfurl.desc)}</div></div>`;
+  }
+  if(m.attach){
+    inner+=`<div class="attach"><div class="ic">📄</div><div><div class="fn">${esc(m.attach.name)}</div><div class="fmeta">${esc(m.attach.meta)}</div></div></div>`;
+  }
+  inner+=`</div>`;
+  el.innerHTML=inner;
+  return el;
+}
+
+/* ---------- decision bar ---------- */
+function renderDecide(c){
+  const bar=document.getElementById('decideBar');
+  bar.style.display='block';
+  if(answered[c.id]){ bar.innerHTML=''; showVerdict(c, answered[c.id].chosePhish, true); return; }
+  bar.innerHTML =
+    `<div class="q"><b>Ваш вердикт.</b> ${esc(c.q)}</div>`
+    + `<div class="choices">`
+    + `<button class="choice safe" onclick="answer('${c.id}',false)"><span class="ci">✅</span> Это обычное рабочее сообщение</button>`
+    + `<button class="choice phish" onclick="answer('${c.id}',true)"><span class="ci">🎣</span> Это попытка фишинга</button>`
+    + `</div>`;
+}
+
+function answer(id, chosePhish){
+  const c=CONV.find(x=>x.id===id);
+  const correct = (chosePhish===c.phish);
+  answered[id]={chosePhish, correct};
+  updateCounters();
+  showVerdict(c, chosePhish, false);
+  renderSidebar();
+}
+
+function showVerdict(c, chosePhish, replay){
+  const bar=document.getElementById('decideBar');
+  const correct=(chosePhish===c.phish);
+  const v=c.verdict;
+  const allDone = Object.keys(answered).length===total;
+  let h=`<div class="verdict ${correct?'correct':'wrong'}">`;
+  h+=`<div class="vh">${correct?'✓ Верно':'✗ Мимо'}</div>`;
+  h+=`<div class="truth ${c.phish?'is-phish':'is-safe'}">${c.phish?'🎣 Это был фишинг':'✅ Это было безопасное сообщение'}</div>`;
+  h+=`<p>${esc(v.why)}</p>`;
+  h+=`<ul class="signals">${v.signals.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`;
+  if(!replay){
+    const nextUn = CONV.find(x=>!answered[x.id]);
+    if(allDone) h+=`<button class="next" onclick="showFinish()">Посмотреть итог →</button>`;
+    else h+=`<button class="next" onclick="openConv('${nextUn.id}')">Следующая переписка →</button>`;
+  }
+  h+=`</div>`;
+  bar.innerHTML=h;
+  bar.querySelector('.verdict').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function updateCounters(){
+  const done=Object.keys(answered).length;
+  const score=Object.values(answered).filter(a=>a.correct).length;
+  document.getElementById('progCount').textContent=done;
+  document.getElementById('scoreCount').textContent=score;
+}
+
+/* ---------- finish ---------- */
+function showFinish(){
+  const score=Object.values(answered).filter(a=>a.correct).length;
+  document.getElementById('app').classList.remove('on');
+  document.getElementById('finish').classList.add('on');
+  const big=document.getElementById('bigScore');
+  big.textContent=`${score}/${total}`;
+  big.className='big '+(score===5?'hi':score>=3?'mid':'lo');
+  const title=document.getElementById('finishTitle');
+  const sum=document.getElementById('finishSum');
+  if(score===5){title.textContent='Чисто. Оба фишинга пойманы, ничего лишнего.';sum.textContent='Вы отличили поддельный хелпдеск и «CFO» от нормальной рабочей переписки, не приняв безобидные сообщения за угрозу.';}
+  else if(score>=3){title.textContent='Неплохо, но есть на что смотреть внимательнее.';sum.textContent='Пройдитесь по разбору ниже — особенно там, где вердикт не совпал. В реальной атаке цена ошибки выше.';}
+  else{title.textContent='Стоит пересмотреть признаки.';sum.textContent='Половина и меньше — это повод вернуться к разбору. Фишинг в мессенджере маскируется под своих, поэтому важно ловить не «странный вид», а конкретные просьбы и пометки.';}
+
+  const recap=document.getElementById('recap');
+  recap.innerHTML=CONV.map(c=>{
+    const a=answered[c.id];
+    return `<div class="ri">
+      <div class="rmark ${a.correct?'ok':'no'}">${a.correct?'✓':'✗'}</div>
+      <div class="rname">${c.kind==='channel'?'# '+c.name:c.name}</div>
+      <div class="rtag ${c.phish?'p':'s'}">${c.phish?'фишинг':'безопасно'}</div>
+    </div>`;
+  }).join('');
+  window.scrollTo(0,0);
+}
+
+/* ---------- nav ---------- */
+function startSim(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('app').classList.add('on');
+  renderSidebar();
+  openConv(CONV[0].id);
+}
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');}
+</script>
+</body>
+</html>
