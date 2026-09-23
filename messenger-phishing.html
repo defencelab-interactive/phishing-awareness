@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phishing in Messengers — Interactive Module</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f5f6f8;--surface:#fff;--border:#e4e7ec;--text:#101828;--sub:#475467;--muted:#98a2b3;
+  --blue:#1570ef;--blue-l:#eff4ff;--blue-m:#b2ccff;--red:#d92d20;--red-l:#fef3f2;
+  --orange:#dc6803;--orange-l:#fffaeb;--green:#039855;--green-l:#ecfdf3;
+  --purple:#6941c6;--purple-l:#f4f3ff;--purple-m:#d9d6fe;--dark:#0f172a;--topbar:52px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{height:100%;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100%;}
+
+.top-bar{height:var(--topbar);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:10px;position:sticky;top:0;z-index:200;}
+.logo{display:flex;align-items:center;gap:7px;font-weight:700;font-size:.88rem;}
+.logo-box{width:26px;height:26px;background:var(--blue);border-radius:5px;display:flex;align-items:center;justify-content:center;}
+.logo-box svg{width:14px;height:14px;}
+.top-sub{font-size:.72rem;color:var(--muted);}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:14px;}
+.prog-wrap{display:flex;align-items:center;gap:8px;font-size:.76rem;color:var(--sub);}
+.prog-track{width:100px;height:3px;background:var(--border);border-radius:99px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--blue);border-radius:99px;transition:width .5s;}
+.score-pill{font-size:.7rem;font-weight:600;padding:3px 10px;border-radius:99px;background:var(--green-l);color:var(--green);border:1px solid #a6f4c5;}
+
+.progress-stripe{position:sticky;top:var(--topbar);left:0;right:0;height:3px;background:var(--border);z-index:199;margin-top:-3px;}
+.progress-stripe-fill{height:100%;background:var(--blue);transition:width .4s ease;width:0%;}
+
+.layout{padding-top:0;}
+.main{margin:0 auto;padding:32px 48px;max-width:1000px;width:100%;}
+
+.screen{display:none;}
+.screen.active{display:block;animation:up .28s ease;}
+@keyframes up{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* INTRO */
+.welcome-hero{background:linear-gradient(135deg,var(--dark),#1e293b);border-radius:14px;padding:36px 40px;margin-bottom:22px;}
+.wh-eyebrow{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#64748b;margin-bottom:14px;}
+.wh-title{font-size:1.7rem;font-weight:700;color:#fff;line-height:1.28;letter-spacing:-.01em;}
+.wh-title em{color:var(--blue);font-style:normal;}
+.wh-sub{font-size:.92rem;color:#94a3b8;line-height:1.6;margin-top:14px;max-width:640px;}
+.how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px;}
+.how-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.how-ic{font-size:1.3rem;margin-bottom:8px;}
+.how-t{font-size:.84rem;font-weight:700;margin-bottom:4px;}
+.how-d{font-size:.76rem;color:var(--sub);line-height:1.5;}
+
+/* MESSENGER */
+.mchrome{background:#e8eaed;border-radius:8px 8px 0 0;padding:7px 12px;display:flex;align-items:center;gap:7px;border:1px solid #d0d5dd;border-bottom:none;}
+.c-dot{width:10px;height:10px;border-radius:50%;}
+.c-bar{flex:1;background:#fff;border-radius:4px;padding:3px 10px;font-size:.68rem;color:var(--sub);border:1px solid var(--border);font-family:'IBM Plex Mono',monospace;}
+.mclient{background:var(--surface);border:1px solid var(--border);border-radius:0 0 8px 8px;margin-bottom:16px;box-shadow:0 2px 14px rgba(0,0,0,.06);display:grid;grid-template-columns:220px 1fr;min-height:420px;}
+.msidebar{background:#fafbfc;border-right:1px solid var(--border);padding:12px 8px;border-radius:0 0 0 8px;}
+.side-h{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:8px 10px 5px;}
+.chan{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;cursor:pointer;color:var(--sub);font-size:.82rem;transition:background .12s;}
+.chan:hover{background:#eef1f5;}
+.chan.active{background:var(--blue-l);color:var(--blue);font-weight:600;}
+.chan .hash{color:var(--muted);font-weight:700;}
+.chan .dm-av{width:20px;height:20px;border-radius:5px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;color:#fff;}
+.chan .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+.chan .ext-mini{font-size:.55rem;font-weight:800;letter-spacing:.03em;background:var(--orange-l);color:var(--orange);border:1px solid #fedf89;border-radius:3px;padding:1px 4px;flex:0 0 auto;}
+.chan .unread{width:7px;height:7px;border-radius:50%;background:var(--blue);flex:0 0 auto;}
+.chan.done .unread{background:transparent;border:1px solid var(--muted);}
+
+.mmain{display:flex;flex-direction:column;min-width:0;}
+.mhead{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px;}
+.mhead .mt{font-weight:700;font-size:.9rem;}
+.mhead .ext-tag{font-size:.6rem;font-weight:800;background:var(--orange-l);color:var(--orange);border:1px solid #fedf89;border-radius:4px;padding:2px 7px;letter-spacing:.03em;}
+.mhead .msub{font-size:.7rem;color:var(--muted);margin-left:auto;}
+.mstream{padding:18px;flex:1;}
+.mempty{height:100%;min-height:360px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);text-align:center;gap:10px;}
+
+.msg{display:flex;gap:10px;margin-bottom:16px;}
+.msg .av{width:32px;height:32px;border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.72rem;color:#fff;}
+.msg .mb{min-width:0;}
+.msg .row1{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;}
+.msg .s-name{font-size:.82rem;font-weight:700;}
+.msg .ext-flag{font-size:.58rem;font-weight:800;background:var(--orange-l);color:var(--orange);border:1px solid #fedf89;border-radius:3px;padding:1px 5px;letter-spacing:.03em;}
+.msg .s-time{font-size:.68rem;color:var(--muted);}
+.msg .mtext{margin-top:3px;font-size:.83rem;color:var(--text);line-height:1.6;}
+.msg .mtext a{color:var(--blue);text-decoration:none;border-bottom:1px solid var(--blue-m);}
+.url-hint{display:block;font-size:.68rem;color:var(--muted);margin-top:3px;font-family:'IBM Plex Mono',monospace;}
+.unfurl{margin-top:9px;border-left:3px solid var(--border);padding:9px 13px;background:var(--bg);border-radius:0 7px 7px 0;max-width:400px;}
+.unfurl.sus{border-left-color:var(--orange);}
+.u-site{font-size:.68rem;color:var(--sub);margin-bottom:2px;font-family:'IBM Plex Mono',monospace;}
+.u-title{font-weight:600;color:var(--text);font-size:.8rem;}
+.u-desc{font-size:.72rem;color:var(--sub);margin-top:2px;}
+.mattach{margin-top:9px;display:inline-flex;align-items:center;gap:9px;border:1px solid var(--border);background:var(--bg);border-radius:8px;padding:9px 12px;max-width:300px;}
+.mattach .ic{width:28px;height:28px;border-radius:6px;background:#e8eaed;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex:0 0 auto;}
+.mattach .fn{font-size:.78rem;font-weight:600;}
+.mattach .fm{font-size:.68rem;color:var(--muted);}
+
+/* VERDICT (dark fq box, matches parent module) */
+.fq-box{background:linear-gradient(135deg,var(--dark),#1e293b);border-radius:10px;padding:22px 24px;margin-bottom:16px;}
+.fq-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#475569;margin-bottom:8px;}
+.fq-q{font-size:.98rem;font-weight:700;color:#fff;line-height:1.4;margin-bottom:14px;}
+.v-opts{display:flex;gap:10px;}
+.v-btn{flex:1;padding:12px 10px;border-radius:8px;border:1px solid #334155;background:#1e293b;color:#cbd5e1;font-size:.83rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;text-align:center;display:flex;align-items:center;justify-content:center;gap:7px;}
+.v-btn:hover:not(:disabled){border-color:#64748b;color:#fff;background:#273548;}
+.v-btn:disabled{cursor:default;opacity:.55;}
+.v-btn.picked-right{border-color:#34d399;background:rgba(52,211,153,.14);color:#34d399;}
+.v-btn.picked-wrong{border-color:#f87171;background:rgba(248,113,113,.12);color:#f87171;}
+
+.verdict{border-radius:11px;padding:18px 20px;margin-bottom:16px;border:1px solid var(--border);background:var(--surface);display:none;animation:up .22s ease;}
+.verdict.show{display:block;}
+.v-head{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.92rem;margin-bottom:8px;}
+.v-head.correct{color:var(--green);}
+.v-head.wrong{color:var(--red);}
+.v-truth{font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:5px;margin-bottom:12px;display:inline-block;}
+.v-truth.is-phish{background:var(--red-l);color:var(--red);}
+.v-truth.is-safe{background:var(--green-l);color:var(--green);}
+.v-why{font-size:.83rem;color:var(--sub);line-height:1.65;margin-bottom:12px;}
+.v-signals{list-style:none;display:flex;flex-direction:column;gap:6px;}
+.v-signals li{font-size:.79rem;color:var(--text);padding-left:20px;position:relative;line-height:1.45;}
+.v-signals li:before{content:'';position:absolute;left:3px;top:7px;width:7px;height:7px;border-radius:50%;background:var(--orange);}
+.v-next{margin-top:16px;}
+
+/* buttons */
+.btn{padding:10px 18px;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;border:1px solid transparent;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:all .15s;}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-primary:hover{background:#0e5fd8;}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--sub);}
+.btn-ghost:hover{border-color:var(--muted);}
+.row{display:flex;gap:10px;align-items:center;}
+
+/* RULES + FINISH */
+.rules-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0;}
+.rule{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;}
+.rule-n{font-size:2rem;font-weight:900;color:var(--blue);font-family:'IBM Plex Mono',monospace;line-height:1;margin-bottom:10px;}
+.rule-title{font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:5px;}
+.rule-body{font-size:.76rem;color:var(--sub);line-height:1.55;}
+.recap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.recap-i{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);}
+.recap-i:last-child{border-bottom:0;}
+.rmark{width:22px;height:22px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;}
+.rmark.ok{background:var(--green-l);color:var(--green);}
+.rmark.no{background:var(--red-l);color:var(--red);}
+.rname{font-weight:600;font-size:.82rem;}
+.rtag{margin-left:auto;font-size:.6rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:5px;}
+.rtag.p{background:var(--red-l);color:var(--red);}
+.rtag.s{background:var(--green-l);color:var(--green);}
+.done-card{background:linear-gradient(135deg,var(--dark),#1e293b);border-radius:10px;padding:26px 28px;display:flex;align-items:center;gap:20px;margin-top:4px;margin-bottom:20px;}
+.done-ic{font-size:2.4rem;flex-shrink:0;}
+.done-t{font-size:1.02rem;font-weight:700;color:#fff;margin-bottom:4px;}
+.done-s{font-size:.8rem;color:#94a3b8;line-height:1.6;}
+
+.fs-btn{position:fixed;top:8px;right:8px;z-index:9990;width:32px;height:32px;border-radius:6px;border:1px solid var(--border);background:var(--surface);box-shadow:0 2px 6px rgba(0,0,0,.08);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.fs-btn:hover{background:var(--bg);}
+.fs-btn svg{width:14px;height:14px;color:var(--sub);}
+
+body{zoom:1.25;}
+@supports not (zoom:1.25){body{transform:scale(1.25);transform-origin:top left;width:80%;}}
+
+@media(max-width:900px){
+  .main{padding:20px 16px;}
+  .top-bar{padding:0 14px;}
+  .how-grid{grid-template-columns:1fr;}
+  .rules-grid{grid-template-columns:1fr;}
+  .mclient{grid-template-columns:1fr;}
+  .msidebar{border-right:none;border-bottom:1px solid var(--border);border-radius:0;display:flex;flex-wrap:wrap;gap:4px;}
+  .side-h{width:100%;}
+  .chan{flex:1 1 40%;}
+  .v-opts{flex-direction:column;}
+  .wh-title{font-size:1.3rem;}
+  .top-sub{display:none;}
+}
+</style>
+</head>
+<body>
+
+<button class="fs-btn" id="fsBtn" onclick="toggleFs()" title="Fullscreen">
+  <svg id="fsExpand" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="10,2 14,2 14,6"/><polyline points="6,14 2,14 2,10"/><line x1="14" y1="2" x2="9.5" y2="6.5"/><line x1="2" y1="14" x2="6.5" y2="9.5"/>
+  </svg>
+  <svg id="fsShrink" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+    <polyline points="4,10 4,14 8,14"/><polyline points="12,6 12,2 8,2"/><line x1="4" y1="14" x2="8.5" y2="9.5"/><line x1="12" y1="2" x2="7.5" y2="6.5"/>
+  </svg>
+</button>
+
+<div class="top-bar">
+  <div class="logo">
+    <div class="logo-box">
+      <svg viewBox="0 0 14 14" fill="none"><path d="M7 1L13 4.5V9.5L7 13L1 9.5V4.5Z" stroke="#fff" stroke-width="1.5"/><circle cx="7" cy="7" r="1.5" fill="#fff"/></svg>
+    </div>
+    Phishing Awareness
+  </div>
+  <span class="top-sub">Messenger edition</span>
+  <div class="top-right">
+    <div class="score-pill" id="scorePill" style="display:none">Correct: <span id="scoreCount">0</span></div>
+    <div class="prog-wrap">
+      <span id="pLbl">— / 5</span>
+      <div class="prog-track"><div class="prog-fill" id="pFill" style="width:0%"></div></div>
+    </div>
+  </div>
+</div>
+<div class="progress-stripe"><div class="progress-stripe-fill" id="pStripe"></div></div>
+
+<div class="layout">
+<main class="main">
+
+<!-- INTRO -->
+<div class="screen active" id="sIntro">
+  <div class="welcome-hero">
+    <div class="wh-eyebrow">Phishing Awareness · Simulation</div>
+    <div class="wh-title">Phishing doesn't only arrive by <em>email</em>.<br>It arrives in the chat you already trust.</div>
+    <div class="wh-sub">A messenger has no spam filter, no domain checks, no "external sender" warning of the kind email trained you to expect. The message comes from a "colleague" in a work channel — and by default, people believe it.</div>
+  </div>
+  <div class="how-grid">
+    <div class="how-card"><div class="how-ic">🎯</div><div class="how-t">Spot 2 of 5</div><div class="how-d">Five conversations are waiting. Two are phishing, three are ordinary work. Your job is to tell them apart.</div></div>
+    <div class="how-card"><div class="how-ic">🧩</div><div class="how-t">Real tactics</div><div class="how-d">Every scenario is built from attack patterns seen in Slack and Teams through 2025–2026, not invented ones.</div></div>
+    <div class="how-card"><div class="how-ic">🔎</div><div class="how-t">A breakdown each time</div><div class="how-d">After every call you'll see whether it was phishing and exactly which signals gave it away.</div></div>
+  </div>
+  <button class="btn btn-primary" onclick="startSim()">Open the workspace →</button>
+</div>
+
+<!-- SIM -->
+<div class="screen" id="sSim">
+  <div class="mchrome">
+    <span class="c-dot" style="background:#ff5f57"></span>
+    <span class="c-dot" style="background:#febc2e"></span>
+    <span class="c-dot" style="background:#28c840"></span>
+    <span class="c-bar">nordwind-logistics.workspace.app</span>
+  </div>
+  <div class="mclient">
+    <aside class="msidebar">
+      <div class="side-h">Channels</div>
+      <div id="channelList"></div>
+      <div class="side-h">Direct messages</div>
+      <div id="dmList"></div>
+    </aside>
+    <div class="mmain">
+      <div class="mhead" id="mHead"><span class="mt">Select a conversation</span></div>
+      <div class="mstream" id="mStream">
+        <div class="mempty" id="mEmpty">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <div>Pick a conversation on the left to begin</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="decideBlock" style="display:none">
+    <div class="fq-box">
+      <div class="fq-label">Your call</div>
+      <div class="fq-q" id="fqQuestion">—</div>
+      <div class="v-opts">
+        <button class="v-btn" id="vSafe" onclick="answer(false)">✅ Ordinary work message</button>
+        <button class="v-btn" id="vPhish" onclick="answer(true)">🎣 A phishing attempt</button>
+      </div>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+</div>
+
+<!-- FINISH -->
+<div class="screen" id="sFinish">
+  <div class="done-card">
+    <div class="done-ic" id="doneIc">🛡️</div>
+    <div>
+      <div class="done-t" id="finTitle">—</div>
+      <div class="done-s" id="finSum">—</div>
+    </div>
+  </div>
+  <div class="recap" id="recap"></div>
+  <div class="rules-grid">
+    <div class="rule"><div class="rule-n">01</div><div class="rule-title">Login or password requests are the tell</div><div class="rule-body">Any message asking you to re-log-in, "verify your account", or enter a password through a link is almost always phishing — in any channel. Real systems don't chase you in chat.</div></div>
+    <div class="rule"><div class="rule-n">02</div><div class="rule-title">IT never asks for codes or remote access</div><div class="rule-body">A 2FA code, a push approval, or remote control (Quick Assist, AnyDesk) is never a legitimate help-desk request. Treat that ask as the attack itself.</div></div>
+    <div class="rule"><div class="rule-n">03</div><div class="rule-title">Verify through a second channel</div><div class="rule-body">"External" badges and unfamiliar work domains are reasons to slow down. Call the person, open a ticket yourself, message the IT channel you already know — never the link in front of you.</div></div>
+  </div>
+  <div class="row">
+    <button class="btn btn-ghost" onclick="location.reload()">↺ Run it again</button>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+const CONV=[
+  {id:'c-ops',kind:'channel',name:'ops-warehouse',sub:'23 members',phish:false,
+   msgs:[
+     {from:'Marina Koval',init:'MK',col:'#1570ef',time:'09:12',text:'team, intake at warehouse B slips to 14:00 today — a truck is stuck at the border. if you were expecting a morning unload, please replan'},
+     {from:'Dmytro Reut',init:'DR',col:'#039855',time:'09:15',text:'got it, i\u2019ll warn the drivers'}
+   ],
+   q:'A work channel message about a rescheduled intake.',
+   why:'Ordinary coordination. Nothing is requested — no links, no data, no action on access. The senders are known internal colleagues and the thread continues like normal work.',
+   signals:['No links, attachments or "enter something" requests','Internal participants, no External badge','Content matches what the channel is actually for']},
+
+  {id:'c-it',kind:'dm',name:'IT Helpdesk',init:'IT',col:'#dc6803',ext:true,phish:true,
+   msgs:[
+     {from:'IT Helpdesk',init:'IT',col:'#dc6803',time:'10:47',ext:true,
+      text:'Hi! We\u2019re moving sign-in to a new SSO. Your account will be disabled today by 18:00 unless you confirm the migration. Open the link and log in with your work account to keep access:',
+      link:{show:'sso-portal.nordwind',title:'Nordwind SSO · Confirm your account',site:'nordwlnd-sso-verify.top',desc:'Single sign-on · log in to continue',realhint:'https://nordwlnd-sso-verify.top/login'}},
+     {from:'IT Helpdesk',init:'IT',col:'#dc6803',time:'10:47',ext:true,
+      text:'Please don\u2019t forward this to anyone else — the migration is running on an individual schedule.'}
+   ],
+   q:'"IT Helpdesk" asks you to re-log-in for an SSO migration.',
+   why:'A textbook fake help desk. Real IT doesn\u2019t force you to log in through a chat link under threat of being cut off, and doesn\u2019t ask you to keep it secret. The preview domain is a look-alike of yours (nordwlnd, not nordwind, on a .top zone), and Slack link previews can be spoofed separately from the real address.',
+   signals:['External badge on an "internal" IT service','Manufactured urgency: "disabled by 18:00"','Asks you to log in with your work account via a link','Look-alike domain: nordwlnd-sso-verify.top, not your real one','"Don\u2019t forward this" — isolating the target']},
+
+  {id:'c-design',kind:'channel',name:'design-mockups',sub:'8 members',phish:false,
+   msgs:[
+     {from:'Anna Sokol',init:'AS',col:'#6941c6',time:'11:30',
+      text:'dropped the updated landing mockups on our shared drive, folder /2026/landing. take a look at the hero block before lunch — not sure about the button contrast',
+      unfurl:{site:'Company shared drive',title:'2026 / landing / hero-v3',desc:'Folder · 12 files · edited just now'}},
+     {from:'Kostya Lebed',init:'KL',col:'#039855',time:'11:41',text:'looked — i\u2019d darken the button a couple of shades. rest is 🔥'}
+   ],
+   q:'A colleague shares mockups on the shared drive.',
+   why:'A normal work exchange. The link points to your own company drive on the address you use every day, the sender is a known internal colleague, and the reply is real feedback about the work.',
+   signals:['Resource is your familiar internal drive, not an external "file host"','Nobody asks you to enter a password or re-authenticate','Both participants internal, discussion on the actual task']},
+
+  {id:'c-cfo',kind:'dm',name:'Ihor Petrenko',init:'IP',col:'#d92d20',ext:true,phish:true,
+   msgs:[
+     {from:'Ihor Petrenko (CFO)',init:'IP',col:'#d92d20',time:'16:22',ext:true,
+      text:'Hi. I\u2019m in a meeting with the auditors and can\u2019t talk. I need a contractor invoice paid today or we lose the shipment. I\u2019ll send the details — process it directly, skip the usual approval, on my authority.'},
+     {from:'Ihor Petrenko (CFO)',init:'IP',col:'#d92d20',time:'16:23',ext:true,
+      text:'And keep this between us for now, don\u2019t raise it in the finance channel — I don\u2019t want noise before the audit.',
+      attach:{name:'invoice_urgent_4471.pdf',meta:'PDF · 78 KB'}}
+   ],
+   q:'"The CFO" asks you to pay an invoice urgently, skipping approval.',
+   why:'Business email compromise (BEC) moved into DMs. Note the External badge on this contact — it is not the CFO\u2019s internal account. In a messenger an external participant can set any display name, and a "chameleon" can even switch identity inside an existing thread. Urgent + bypass the rules + tell no one is itself the signal.',
+   signals:['External badge on "your CFO"','Pressure by urgency and executive authority','Asks you to bypass the normal payment approval','"Between us, don\u2019t raise it in the channel" — dodging oversight','Can\u2019t be checked by voice: "in a meeting, can\u2019t talk"']},
+
+  {id:'c-general',kind:'channel',name:'general',sub:'54 members',phish:false,
+   msgs:[
+     {from:'Oleh (HR)',init:'OH',col:'#1570ef',time:'13:05',text:'reminder: Friday team quiz at 17:00, drop a 🎉 if you\u2019re in. no sign-up needed, just show up in the "Baltika" meeting room'},
+     {from:'Sveta Moroz',init:'SM',col:'#039855',time:'13:08',text:'coming as a team 🙌'},
+     {from:'Pavlo Hryn',init:'PH',col:'#6941c6',time:'13:10',text:'+1, i\u2019ll be there'}
+   ],
+   q:'HR announces a team quiz in the general channel.',
+   why:'A harmless internal announcement. No links, no request to enter anything, no urgency-with-a-threat. Several known colleagues reply in the open — not what phishing looks like.',
+   signals:['No links, attachments or data requests','Internal channel members only','A live reply thread from several colleagues']}
+];
+
+let answered={},currentId=null;const total=CONV.length;
+
+function renderSidebar(){
+  const ch=document.getElementById('channelList'),dm=document.getElementById('dmList');
+  ch.innerHTML='';dm.innerHTML='';
+  CONV.forEach(c=>{
+    const el=document.createElement('div');
+    el.className='chan'+(c.id===currentId?' active':'')+(answered[c.id]?' done':'');
+    el.onclick=()=>openConv(c.id);
+    if(c.kind==='channel'){
+      el.innerHTML=`<span class="hash">#</span><span class="nm">${c.name}</span><span class="unread"></span>`;
+    }else{
+      el.innerHTML=`<span class="dm-av" style="background:${c.col}">${c.init}</span><span class="nm">${c.name}</span>`
+        +(c.ext?'<span class="ext-mini">EXT</span>':'<span class="unread"></span>');
+    }
+    (c.kind==='channel'?ch:dm).appendChild(el);
+  });
+}
+function esc(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function openConv(id){
+  currentId=id;const c=CONV.find(x=>x.id===id);
+  const em=document.getElementById('mEmpty');if(em)em.remove();
+  const head=document.getElementById('mHead');
+  head.innerHTML=c.kind==='channel'
+    ?`<span class="mt"># ${c.name}</span><span class="msub">${c.sub}</span>`
+    :`<span class="mt">${c.name}</span>`+(c.ext?'<span class="ext-tag">EXTERNAL</span>':'')+`<span class="msub">direct message</span>`;
+  const s=document.getElementById('mStream');s.innerHTML='';
+  c.msgs.forEach(m=>s.appendChild(renderMsg(m)));
+  document.getElementById('decideBlock').style.display='block';
+  renderDecide(c);renderSidebar();
+  document.getElementById('decideBlock').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function renderMsg(m){
+  const el=document.createElement('div');el.className='msg';
+  let h=`<div class="av" style="background:${m.col}">${m.init}</div><div class="mb">`;
+  h+=`<div class="row1"><span class="s-name">${esc(m.from)}</span>`+(m.ext?'<span class="ext-flag">EXTERNAL</span>':'')+`<span class="s-time">${m.time}</span></div>`;
+  h+=`<div class="mtext">${esc(m.text)}`;
+  if(m.link){h+=` <a href="#" onclick="return false">${esc(m.link.show)}</a><span class="url-hint">↳ actually goes to: ${esc(m.link.realhint)}</span>`;}
+  h+=`</div>`;
+  if(m.link){h+=`<div class="unfurl sus"><div class="u-site">${esc(m.link.site)}</div><div class="u-title">${esc(m.link.title)}</div><div class="u-desc">${esc(m.link.desc)}</div></div>`;}
+  if(m.unfurl){h+=`<div class="unfurl"><div class="u-site">${esc(m.unfurl.site)}</div><div class="u-title">${esc(m.unfurl.title)}</div><div class="u-desc">${esc(m.unfurl.desc)}</div></div>`;}
+  if(m.attach){h+=`<div class="mattach"><div class="ic">📄</div><div><div class="fn">${esc(m.attach.name)}</div><div class="fm">${esc(m.attach.meta)}</div></div></div>`;}
+  h+=`</div>`;el.innerHTML=h;return el;
+}
+function renderDecide(c){
+  document.getElementById('fqQuestion').textContent=c.q;
+  const vs=document.getElementById('vSafe'),vp=document.getElementById('vPhish'),vd=document.getElementById('verdict');
+  vs.className='v-btn';vp.className='v-btn';vs.disabled=false;vp.disabled=false;vd.className='verdict';vd.innerHTML='';
+  if(answered[c.id]){showVerdict(c,answered[c.id].chosePhish,true);}
+}
+function answer(chosePhish){
+  const c=CONV.find(x=>x.id===currentId);if(answered[c.id])return;
+  answered[c.id]={chosePhish,correct:chosePhish===c.phish};
+  updateProg();showVerdict(c,chosePhish,false);renderSidebar();
+}
+function showVerdict(c,chosePhish,replay){
+  const correct=chosePhish===c.phish;
+  const vs=document.getElementById('vSafe'),vp=document.getElementById('vPhish');
+  vs.disabled=true;vp.disabled=true;
+  const picked=chosePhish?vp:vs;picked.className='v-btn '+(correct?'picked-right':'picked-wrong');
+  const allDone=Object.keys(answered).length===total;
+  const nextUn=CONV.find(x=>!answered[x.id]);
+  let h=`<div class="v-head ${correct?'correct':'wrong'}">${correct?'✓ Correct':'✗ Missed'}</div>`;
+  h+=`<span class="v-truth ${c.phish?'is-phish':'is-safe'}">${c.phish?'🎣 This was phishing':'✅ This was a safe message'}</span>`;
+  h+=`<div class="v-why">${esc(c.why)}</div>`;
+  h+=`<ul class="v-signals">${c.signals.map(s=>`<li>${esc(s)}</li>`).join('')}</ul>`;
+  if(!replay){
+    h+=`<div class="v-next">`+(allDone
+      ?`<button class="btn btn-primary" onclick="showFinish()">See your result →</button>`
+      :`<button class="btn btn-primary" onclick="openConv('${nextUn.id}')">Next conversation →</button>`)+`</div>`;
+  }
+  const vd=document.getElementById('verdict');vd.className='verdict show';vd.innerHTML=h;
+  vd.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function updateProg(){
+  const done=Object.keys(answered).length,score=Object.values(answered).filter(a=>a.correct).length;
+  document.getElementById('pLbl').textContent=`${done} / ${total}`;
+  const pct=done/total*100;
+  document.getElementById('pFill').style.width=pct+'%';
+  document.getElementById('pStripe').style.width=pct+'%';
+  document.getElementById('scorePill').style.display='block';
+  document.getElementById('scoreCount').textContent=score;
+}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);}
+function startSim(){showScreen('sSim');renderSidebar();openConv(CONV[0].id);}
+function showFinish(){
+  const score=Object.values(answered).filter(a=>a.correct).length;
+  showScreen('sFinish');
+  const ic=document.getElementById('doneIc'),t=document.getElementById('finTitle'),s=document.getElementById('finSum');
+  if(score===5){ic.textContent='🛡️';t.textContent=`Clean sweep — ${score}/5.`;s.textContent='You caught both the fake help desk and the "CFO", and you didn\u2019t mistake the ordinary messages for threats.';}
+  else if(score>=3){ic.textContent='🔍';t.textContent=`${score}/5 — solid, with a couple to revisit.`;s.textContent='Walk back through the breakdowns below, especially where your call didn\u2019t match. In a real attack the cost of a miss is higher.';}
+  else{ic.textContent='⚠️';t.textContent=`${score}/5 — worth another look.`;s.textContent='Half or fewer is a signal to revisit the breakdowns. Messenger phishing hides as one of your own, so catch the specific asks and badges, not the "weird look".';}
+  document.getElementById('recap').innerHTML=CONV.map(c=>{const a=answered[c.id];
+    return `<div class="recap-i"><div class="rmark ${a.correct?'ok':'no'}">${a.correct?'✓':'✗'}</div>`
+      +`<div class="rname">${c.kind==='channel'?'# '+c.name:c.name}</div>`
+      +`<div class="rtag ${c.phish?'p':'s'}">${c.phish?'phishing':'safe'}</div></div>`;
+  }).join('');
+}
+function toggleFs(){const d=document.documentElement,fs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  if(!fs){(d.requestFullscreen||d.webkitRequestFullscreen).call(d);}else{(document.exitFullscreen||document.webkitExitFullscreen).call(document);}}
+function onFsChange(){const fs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+  document.getElementById('fsExpand').style.display=fs?'none':'block';document.getElementById('fsShrink').style.display=fs?'block':'none';}
+document.addEventListener('fullscreenchange',onFsChange);document.addEventListener('webkitfullscreenchange',onFsChange);
+</script>
+</body>
+</html>
