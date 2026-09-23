@@ -499,6 +499,27 @@ body { zoom: 1.25; }
   line-height: 1.45;
   color: var(--text);
 }
+
+/* ── DARK THEME ── */
+:root[data-theme="dark"]{
+  --bg:#0f1216;--surface:#171a1f;--border:#2a2e35;--text:#e7ebf0;--sub:#aeb6c2;--muted:#7c8593;
+  --blue-l:#12233d;--blue-m:#274a72;--red-l:#3a1a1c;--green-l:#122a20;
+  --orange-l:#33280f;--purple-l:#241f3a;--purple-m:#3a3560;
+}
+:root[data-theme="dark"] .email-chrome{background:#1f242b;border-color:#2a2e35;}
+:root[data-theme="dark"] .c-bar{background:#0f1216;color:var(--sub);border-color:#2a2e35;}
+:root[data-theme="dark"] .e-toolbar{background:#12151a;border-color:#2a2e35;}
+:root[data-theme="dark"] .e-btn{background:#1f242b;color:var(--sub);border-color:#2a2e35;}
+:root[data-theme="dark"] .av{background:#2a3344;color:var(--sub);}
+:root[data-theme="dark"] .ch-lt{background:#1f242b;color:var(--sub);border-color:#2a2e35;}
+:root[data-theme="dark"] .e-attach{background:#0f1216;}
+:root[data-theme="dark"] .fpf-code{background:#0b0e12;}
+:root[data-theme="dark"] .prot-facts .pf,:root[data-theme="dark"] .rule-eg,:root[data-theme="dark"] .fpf{background:#0f1216;}
+
+/* ── THEME TOGGLE BUTTON ── */
+.theme-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0;}
+.theme-btn:hover{background:var(--bg);}
+.theme-btn svg{width:15px;height:15px;color:var(--sub);}
 </style>
 </head>
 <body>
@@ -531,6 +552,10 @@ body { zoom: 1.25; }
   </div>
   <span class="top-sub"></span>
   <div class="top-right">
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Light / dark mode" aria-label="Toggle theme">
+      <svg id="themeMoon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></svg>
+      <svg id="themeSun" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="display:none"><circle cx="8" cy="8" r="3.2"/><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3 3l1.1 1.1M11.9 11.9L13 13M13 3l-1.1 1.1M4.1 11.9L3 13"/></svg>
+    </button>
     <div class="role-pill" id="rolePill"></div>
     <div class="prog-wrap">
       <span id="pLbl">— / 10</span>
@@ -1241,6 +1266,20 @@ function onFsChange() {
 }
 document.addEventListener('fullscreenchange', onFsChange);
 document.addEventListener('webkitfullscreenchange', onFsChange);
+
+/* ── THEME TOGGLE ── */
+function applyThemeIcon(){
+  var dark=document.documentElement.getAttribute('data-theme')==='dark';
+  document.getElementById('themeMoon').style.display=dark?'none':'block';
+  document.getElementById('themeSun').style.display=dark?'block':'none';
+}
+function toggleTheme(){
+  var r=document.documentElement, dark=r.getAttribute('data-theme')==='dark';
+  r.setAttribute('data-theme',dark?'light':'dark');
+  try{localStorage.setItem('pa-theme',dark?'light':'dark');}catch(e){}
+  applyThemeIcon();
+}
+(function(){try{var t=localStorage.getItem('pa-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}applyThemeIcon();})();
 
 const _origRestart = restart;
 restart = function() {
